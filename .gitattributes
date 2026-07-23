@@ -1,0 +1,5 @@
+* text=auto
+*.jar binary
+*.keystore binary
+*.png binary
+*.jpg binary
