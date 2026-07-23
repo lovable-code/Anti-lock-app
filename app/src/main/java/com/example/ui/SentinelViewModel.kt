@@ -12,6 +12,8 @@ import com.example.data.CommandEntity
 import com.example.data.DeviceEntity
 import com.example.data.SentinelRepository
 import com.example.service.DeviceAgentManager
+import com.example.util.DeviceDiagnosticHelper
+import com.example.util.DeviceDiagnosticReport
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -55,6 +57,25 @@ class SentinelViewModel(
 
     private val _isAuthenticating = MutableStateFlow(false)
     val isAuthenticating = _isAuthenticating.asStateFlow()
+
+    private val _diagnosticReport = MutableStateFlow<DeviceDiagnosticReport?>(null)
+    val diagnosticReport = _diagnosticReport.asStateFlow()
+
+    fun refreshDiagnostics(): DeviceDiagnosticReport {
+        val report = DeviceDiagnosticHelper.collectDiagnostics(context)
+        _diagnosticReport.value = report
+        viewModelScope.launch {
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "Diagnostics Collected: Model=${report.model}, Battery=${report.batteryLevelPercentage}%, OS=Android ${report.androidVersion}",
+                    level = "INFO",
+                    deviceId = agentManager.thisDeviceId
+                )
+            )
+        }
+        return report
+    }
 
     enum class AppThemeMode {
         DARK,
@@ -106,6 +127,7 @@ class SentinelViewModel(
     private var simulationJob: Job? = null
 
     init {
+        refreshDiagnostics()
         viewModelScope.launch {
             // Seed database if empty
             seedInitialDatabase()

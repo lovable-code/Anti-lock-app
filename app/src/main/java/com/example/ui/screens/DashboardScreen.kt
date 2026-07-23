@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.example.data.DeviceEntity
 import com.example.ui.SentinelViewModel
 import com.example.ui.theme.EmeraldNeon
+import com.example.util.DeviceDiagnosticHelper
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -44,6 +45,10 @@ fun DashboardScreen(
     var selectedDevice by remember { mutableStateOf<DeviceEntity?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var showPermissionsDialog by remember { mutableStateOf(false) }
+
+    // Diagnostic Remote Management States
+    val diagnosticReport by viewModel.diagnosticReport.collectAsState()
+    var showDiagnosticDialog by remember { mutableStateOf(false) }
 
     // Device Enrollment Dialog States
     var showEnrollDialog by remember { mutableStateOf(false) }
@@ -501,6 +506,129 @@ fun DashboardScreen(
                 }
             }
 
+        // Remote Management Diagnostic Information Helper Card
+        item {
+            val report = diagnosticReport ?: viewModel.refreshDiagnostics()
+            Card(
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, EmeraldNeon.copy(alpha = 0.35f), RoundedCornerShape(16.dp))
+                    .testTag("device_diagnostics_card")
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .background(EmeraldNeon.copy(alpha = 0.15f), CircleShape)
+                                    .padding(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Analytics,
+                                    contentDescription = "Diagnostics",
+                                    tint = EmeraldNeon,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Device Diagnostics (Remote Info)",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Model, Battery & Android OS telemetry",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+
+                        IconButton(
+                            onClick = { viewModel.refreshDiagnostics() },
+                            modifier = Modifier.testTag("refresh_diagnostics_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Refresh Telemetry",
+                                tint = EmeraldNeon
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DetailRow(
+                            label = "Device Model",
+                            value = "${report.manufacturer} ${report.model} (${report.board})"
+                        )
+                        DetailRow(
+                            label = "Battery Level",
+                            value = "${report.batteryLevelPercentage}% • ${report.batteryStatus} (${report.powerSource})"
+                        )
+                        DetailRow(
+                            label = "Android Version",
+                            value = "Android ${report.androidVersion} (API ${report.sdkInt})"
+                        )
+                        DetailRow(
+                            label = "Security Patch",
+                            value = report.securityPatch,
+                            isWarn = report.securityPatch.startsWith("2024")
+                        )
+                        DetailRow(
+                            label = "RAM Utilization",
+                            value = "${report.usedRamGb} GB / ${report.totalRamGb} GB"
+                        )
+                        DetailRow(
+                            label = "Storage Utilization",
+                            value = "${report.usedStorageGb} GB / ${report.totalStorageGb} GB"
+                        )
+                        DetailRow(
+                            label = "Network Status",
+                            value = report.networkStatus
+                        )
+                        DetailRow(
+                            label = "System Uptime",
+                            value = report.uptimeFormatted
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        OutlinedButton(
+                            onClick = { showDiagnosticDialog = true },
+                            shape = RoundedCornerShape(8.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = EmeraldNeon),
+                            modifier = Modifier.testTag("view_diagnostic_report_btn")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Terminal,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Export Remote Payload", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
             // Installed Application Package Explorer
             item {
                 Card(
@@ -850,6 +978,76 @@ fun DashboardScreen(
             dismissButton = {
                 TextButton(onClick = { showUnenrollConfirmDialog = false }) {
                     Text("Cancel")
+                }
+            }
+        )
+    }
+
+    // Diagnostic Payload Dialog
+    if (showDiagnosticDialog) {
+        val report = diagnosticReport ?: viewModel.refreshDiagnostics()
+        val jsonPayload = remember(report) { DeviceDiagnosticHelper.exportAsJson(report) }
+        val summaryText = remember(report) { DeviceDiagnosticHelper.formatSummaryText(report) }
+        var isJsonMode by remember { mutableStateOf(true) }
+
+        AlertDialog(
+            onDismissRequest = { showDiagnosticDialog = false },
+            icon = { Icon(Icons.Filled.Analytics, contentDescription = null, tint = EmeraldNeon) },
+            title = {
+                Text(
+                    text = "Remote Diagnostic Report",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = if (isJsonMode) "Format: JSON Payload" else "Format: Plain Text Summary",
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                        )
+                        TextButton(onClick = { isJsonMode = !isJsonMode }) {
+                            Text(if (isJsonMode) "Switch to Text" else "Switch to JSON", fontSize = 11.sp)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp)
+                            .background(Color.Black, RoundedCornerShape(8.dp))
+                            .border(1.dp, EmeraldNeon.copy(alpha = 0.3f), RoundedCornerShape(8.dp))
+                            .padding(12.dp)
+                    ) {
+                        LazyColumn {
+                            item {
+                                Text(
+                                    text = if (isJsonMode) jsonPayload else summaryText,
+                                    fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                                    fontSize = 10.sp,
+                                    color = EmeraldNeon
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showDiagnosticDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldNeon, contentColor = Color.Black),
+                    modifier = Modifier.testTag("close_diagnostic_dialog_btn")
+                ) {
+                    Text("Close", fontWeight = FontWeight.Bold)
                 }
             }
         )
