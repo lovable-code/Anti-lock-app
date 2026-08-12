@@ -1,0 +1,201 @@
+    }
+
+    // Audible Remote Alarm implementation using ToneGenerator
+    private fun startLocalAlarmTone() {
+        alarmJob?.cancel()
+        _activeAlarmLocal.value = true
+        alarmJob = viewModelScope.launch {
+            try {
+                toneGenerator = ToneGenerator(AudioManager.STREAM_ALARM, 100)
+                var count = 0
+                while (count < 30) { // Auto timeout after 30 seconds
+                    toneGenerator?.startTone(ToneGenerator.TONE_CDMA_EMERGENCY_RINGBACK, 1500)
+                    delay(2000)
+                    count++
+                }
+            } catch (e: Exception) {
+                Log.e("SentinelViewModel", "Error starting tone", e)
+            } finally {
+                _activeAlarmLocal.value = false
+            }
+        }
+    }
+
+    private fun stopLocalAlarmTone() {
+        alarmJob?.cancel()
+        _activeAlarmLocal.value = false
+        try {
+            toneGenerator?.release()
+            toneGenerator = null
+        } catch (e: Exception) {
+            Log.e("SentinelViewModel", "Error releasing tone", e)
+        }
+    }
+
+    // Device Enrollment & Unenrollment API
+    fun enrollNewDevice(deviceName: String, deviceModel: String, manufacturer: String = "Generic"): String {
+        val newDeviceId = "sentinel-agent-${UUID.randomUUID().toString().take(6)}"
+        viewModelScope.launch {
+            val newDevice = DeviceEntity(
+                id = newDeviceId,
+                name = deviceName,
+                manufacturer = manufacturer,
+                model = deviceModel,
+                androidVersion = "Android 14",
+                securityPatch = "2026-03-01",
+                batteryPercentage = 95,
+                isCharging = false,
+                networkStatus = "WiFi (Sentinel-Secure)",
+                storageTotalGb = 256.0,
+                storageUsedGb = 45.0,
+                ramTotalGb = 8.0,
+                ramUsedGb = 3.2,
+                isOnline = true,
+                lastActiveTime = System.currentTimeMillis(),
+                healthScore = 98,
+                latitude = 37.7749 + (Random.nextDouble() - 0.5) * 0.02,
+                longitude = -122.4194 + (Random.nextDouble() - 0.5) * 0.02,
+                locationAccuracyMeters = 8.0f,
+                isLostMode = false,
+                customLostMessage = "",
+                customLostContact = "",
+                isLocked = false,
+                isAlarmActive = false
+            )
+            repository.insertDevice(newDevice)
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "ENROLLMENT SUCCESS: Device '$deviceName' ($deviceModel) enrolled into SentinelX system. ID: $newDeviceId",
+                    level = "INFO",
+                    deviceId = newDeviceId
+                )
+            )
+        }
+        return newDeviceId
+    }
+
+    fun unenrollDevice(deviceId: String) {
+        viewModelScope.launch {
+            val target = devices.value.find { it.id == deviceId }
+            val name = target?.name ?: deviceId
+            if (target != null) {
+                repository.deleteDeviceById(deviceId)
+            }
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "UNENROLLMENT NOTICE: Connected device '$name' ($deviceId) unenrolled and revoked from SentinelX network.",
+                    level = "WARNING",
+                    deviceId = deviceId
+                )
+            )
+        }
+    }
+
+    // Helper functions for PIN lock authentication & Online Toggle Lock
+    fun toggleDeviceLockOnline(deviceId: String) {
+        val target = devices.value.find { it.id == deviceId }
+        if (target != null) {
+            if (target.isLocked) {
+                triggerRemoteCommand(deviceId, "UNLOCK_DEVICE")
+            } else {
+                triggerRemoteCommand(deviceId, "LOCK_DEVICE")
+            }
+        } else {
+            triggerRemoteCommand(deviceId, "LOCK_DEVICE")
+        }
+    }
+
+    fun logoutOwner() {
+        _isAuthenticated.value = false
+        _isAppUnlocked.value = false
+    }
+
+    fun generateNewPairingCode(): String {
+        val rawCode = UUID.randomUUID().toString().take(6).uppercase()
+        viewModelScope.launch {
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "New enrollment pairing authorization QR/OTP generated: $rawCode (expires in 10 mins).",
+                    level = "INFO",
+                    deviceId = "system"
+                )
+            )
+        }
+        return rawCode
+    }
+
+    // Encrypted Backup Scheduler Simulation
+    fun triggerLocalBackup() {
+        viewModelScope.launch {
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "Scheduled backup active: Compressing target directories (/Documents, /Photos)...",
+                    level = "INFO",
+                    deviceId = agentManager.thisDeviceId
+                )
+            )
+            delay(1500)
+            val checksum = hashSHA256("backup-content-${System.currentTimeMillis()}")
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "Encrypted cloud backup synchronization complete. Bytes: 142.4 MB. Checksum: ${checksum.take(16)}",
+                    level = "INFO",
+                    deviceId = agentManager.thisDeviceId
+                )
+            )
+        }
+    }
+
+    fun getLocalInstalledApplications(): List<String> {
+        return agentManager.getInstalledApps()
+    }
+
+    // Clear history logs helper
+    fun clearLogs() {
+        viewModelScope.launch {
+            repository.clearAllAuditLogs()
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "System audit trail logs cleared by owner authority.",
+                    level = "WARNING",
+                    deviceId = "system"
+                )
+            )
+        }
+    }
+
+    private fun hashSHA256(input: String): String {
+        return try {
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hash = digest.digest(input.toByteArray(Charsets.UTF_8))
+            hash.joinToString("") { "%02x".format(it) }
+        } catch (e: Exception) {
+            "ae829c3f4e2f949c8112"
+        }
+    }
+
+    private val _diagnosticsProgress = kotlinx.coroutines.flow.MutableStateFlow<List<String>>(emptyList())
+    val diagnosticsProgress = _diagnosticsProgress.asStateFlow()
+
+    private val _isDiagnosing = kotlinx.coroutines.flow.MutableStateFlow(false)
+    val isDiagnosing = _isDiagnosing.asStateFlow()
+
+    fun runResiliencyDiagnostics(onComplete: () -> Unit) {
+        viewModelScope.launch {
+            _isDiagnosing.value = true
+            val steps = mutableListOf<String>()
+            
+            steps.add("🔍 Initializing cryptographic node handshake verification...")
+            _diagnosticsProgress.value = steps.toList()
+            delay(700)
+            
+            steps.add("📱 Checking local Foreground Daemon service state... [OK: ACTIVE]")
+            _diagnosticsProgress.value = steps.toList()
+            delay(700)
+            

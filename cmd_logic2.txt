@@ -1,0 +1,151 @@
+                    )
+                )
+            }
+        }
+    }
+
+    private val _activeAlarmLocal = MutableStateFlow(false)
+    val activeAlarmLocal = _activeAlarmLocal.asStateFlow()
+
+    private var toneGenerator: ToneGenerator? = null
+    private var alarmJob: Job? = null
+    private var simulationJob: Job? = null
+
+    init {
+        refreshDiagnostics()
+        _isKioskModeEnabled.value = sharedPrefs.getBoolean("kiosk_mode_enabled", false)
+        
+        // Process any pending crash logs saved during resilient system recovery
+        if (sharedPrefs.getBoolean("pending_crash_audit_insert", false)) {
+            val crashReport = sharedPrefs.getString("stored_diagnostic_crashes", "") ?: ""
+            if (crashReport.isNotEmpty()) {
+                viewModelScope.launch {
+                    repository.insertAuditLog(
+                        AuditLogEntity(
+                            timestamp = System.currentTimeMillis(),
+                            message = crashReport,
+                            level = "WARNING",
+                            deviceId = agentManager.thisDeviceId
+                        )
+                    )
+                    sharedPrefs.edit()
+                        .putBoolean("pending_crash_audit_insert", false)
+                        .putString("stored_diagnostic_crashes", "")
+                        .apply()
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            // Seed database if empty
+            seedInitialDatabase()
+
+            // Observe Master PIN changes from Room to update Flow automatically
+            repository.masterPinFlow.collect { masterPinEntity ->
+                if (masterPinEntity != null) {
+                    _ownerPasscodeFlow.value = masterPinEntity.pin
+                    sharedPrefs.edit().putString("owner_passcode", masterPinEntity.pin).apply()
+                }
+            }
+        }
+        viewModelScope.launch {
+            // Start hardware state sync and location drift simulation
+            startLocalAgentSyncAndDrift()
+        }
+    }
+
+    fun setKioskModeEnabled(enabled: Boolean) {
+        sharedPrefs.edit().putBoolean("kiosk_mode_enabled", enabled).apply()
+        _isKioskModeEnabled.value = enabled
+        
+        if (enabled) {
+            com.example.service.KioskService.startService(context)
+            viewModelScope.launch {
+                repository.insertAuditLog(
+                    AuditLogEntity(
+                        timestamp = System.currentTimeMillis(),
+                        message = "🛡️ SECURE KIOSK TERMINAL ENFORCED: System interface locked. Home launcher redirect and screen-pinning active.",
+                        level = "INFO",
+                        deviceId = agentManager.thisDeviceId
+                    )
+                )
+            }
+        } else {
+            com.example.service.KioskService.stopService(context)
+            viewModelScope.launch {
+                repository.insertAuditLog(
+                    AuditLogEntity(
+                        timestamp = System.currentTimeMillis(),
+                        message = "🔓 SECURE KIOSK TERMINAL DISMISSED: All terminal restrictions lifted, returned to standard Android OS.",
+                        level = "INFO",
+                        deviceId = agentManager.thisDeviceId
+                    )
+                )
+            }
+        }
+
+        // Force MainActivity to update its lock task pinning state instantly
+        try {
+            val updateIntent = android.content.Intent("com.example.ACTION_UPDATE_LOCK_TASK").apply {
+                setPackage(context.packageName)
+            }
+            context.sendBroadcast(updateIntent)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private suspend fun seedInitialDatabase() {
+        // Initialize Master PIN in Room DB if missing
+        val storedPin = repository.getMasterPin()
+        if (storedPin == null) {
+            val defaultPin = sharedPrefs.getString("owner_passcode", "1234") ?: "1234"
+            repository.insertMasterPin(com.example.data.MasterPinEntity(pin = defaultPin, updatedAt = System.currentTimeMillis()))
+            _ownerPasscodeFlow.value = defaultPin
+        } else {
+            _ownerPasscodeFlow.value = storedPin.pin
+        }
+
+        // Query to see if there are any devices
+        delay(500) // slight delay to let DB open
+        val localDevice = repository.getDeviceById(agentManager.thisDeviceId)
+        if (localDevice == null) {
+            // Log enrollment initialization
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis() - 3600000 * 2,
+                    message = "SentinelX Database initialized. Core crypt-layer active.",
+                    level = "INFO",
+                    deviceId = "system"
+                )
+            )
+
+            // Enroll local agent
+            agentManager.enrollOrUpdateLocalDeviceAgent(37.7749, -122.4194)
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis() - 3000000,
+                    message = "Secure local device enrollment initiated. Generated cryptographic token.",
+                    level = "INFO",
+                    deviceId = agentManager.thisDeviceId
+                )
+            )
+
+            // Enroll secondary device (Tablet)
+            val tablet = DeviceEntity(
+                id = "sentinel-agent-tablet",
+                name = "Google Pixel Tablet",
+                manufacturer = "Google",
+                model = "Pixel Tablet",
+                androidVersion = "Android 14",
+                securityPatch = "2026-05-05",
+                batteryPercentage = 78,
+                isCharging = false,
+                networkStatus = "Wi-Fi (Home_Secure)",
+                storageTotalGb = 256.0,
+                storageUsedGb = 94.2,
+                ramTotalGb = 8.0,
+                ramUsedGb = 4.1,
+                isOnline = true,
+                lastActiveTime = System.currentTimeMillis() - 60000,
+                healthScore = 98,

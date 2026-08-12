@@ -1,0 +1,181 @@
+                        stopLocalAlarmTone()
+                        try {
+                            val prefs = context.getSharedPreferences("sentinel_prefs", Context.MODE_PRIVATE)
+                            prefs.edit().putBoolean("central_lock_enforced", false).apply()
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                        repository.insertAuditLog(
+                            AuditLogEntity(
+                                timestamp = System.currentTimeMillis(),
+                                message = "🔐 SYSTEM-LEVEL UNLOCK: Correct Admin PIN verified locally. Lock interface dismissed.",
+                                level = "SUCCESS",
+                                deviceId = "sentinel-agent-local"
+                            )
+                        )
+                    }
+                }
+            }
+            triggerRemoteCommand(deviceId, "UNLOCK_DEVICE")
+            true
+        } else {
+            if (deviceId == agentManager.thisDeviceId || deviceId == "sentinel-agent-local") {
+                localFailedUnlockCount++
+                viewModelScope.launch {
+                    val localDev = repository.getDeviceById("sentinel-agent-local")
+                    if (localDev != null) {
+                        val triggerAlarm = localFailedUnlockCount >= 3
+                        if (triggerAlarm) {
+                            startLocalAlarmTone()
+                        }
+                        repository.updateDevice(localDev.copy(
+                            isLocked = true,
+                            isAlarmActive = if (triggerAlarm) true else localDev.isAlarmActive,
+                            customLostMessage = "CRITICAL SECURITY BREACH: $localFailedUnlockCount REPEATED FAILED UNLOCK ATTEMPTS DETECTED LOCAL ON DEVICE!"
+                        ))
+                    }
+                    repository.insertAuditLog(
+                        AuditLogEntity(
+                            timestamp = System.currentTimeMillis(),
+                            message = "🚨 CRITICAL BREACH WARNING: Unauthorized unlock attempt #$localFailedUnlockCount with PIN '$pin' on local device! Persistently locking display and triggering defensive audio sirens.",
+                            level = "CRITICAL",
+                            deviceId = "sentinel-agent-local"
+                        )
+                    )
+                }
+            } else {
+                viewModelScope.launch {
+                    repository.insertAuditLog(
+                        AuditLogEntity(
+                            timestamp = System.currentTimeMillis(),
+                            message = "FAILED UNLOCK ATTEMPT: Invalid Owner PIN entered on device '$deviceId'. Lock screen maintained.",
+                            level = "WARNING",
+                            deviceId = deviceId
+                        )
+                    )
+                }
+            }
+            false
+        }
+    }
+
+    fun setTimedAutoLock(deviceId: String, durationMinutes: Long) {
+        timerJobs[deviceId]?.cancel()
+        val totalSecs = durationMinutes * 60L
+        val currentMap = _lockTimerRemainingSeconds.value.toMutableMap()
+        currentMap[deviceId] = totalSecs
+        _lockTimerRemainingSeconds.value = currentMap
+
+        viewModelScope.launch {
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "TIMED AUTO-LOCK SET: Device '$deviceId' scheduled to auto-lock in $durationMinutes minutes (${durationMinutes / 60}h ${durationMinutes % 60}m).",
+                    level = "INFO",
+                    deviceId = deviceId
+                )
+            )
+        }
+
+        val job = viewModelScope.launch {
+            var remaining = totalSecs
+            while (remaining > 0) {
+                delay(1000)
+                remaining--
+                val map = _lockTimerRemainingSeconds.value.toMutableMap()
+                if (map.containsKey(deviceId)) {
+                    map[deviceId] = remaining
+                    _lockTimerRemainingSeconds.value = map
+                } else {
+                    break
+                }
+            }
+            if (remaining <= 0) {
+                // Timer expired -> Lock device
+                val map = _lockTimerRemainingSeconds.value.toMutableMap()
+                map.remove(deviceId)
+                _lockTimerRemainingSeconds.value = map
+
+                triggerRemoteCommand(deviceId, "LOCK_DEVICE")
+                repository.insertAuditLog(
+                    AuditLogEntity(
+                        timestamp = System.currentTimeMillis(),
+                        message = "🚨 TIMED AUTO-LOCK EXPIRED: Limit of $durationMinutes minutes reached for device '$deviceId'. Lock screen enforced!",
+                        level = "WARNING",
+                        deviceId = deviceId
+                    )
+                )
+            }
+        }
+        timerJobs[deviceId] = job
+    }
+
+    fun cancelTimedAutoLock(deviceId: String) {
+        timerJobs[deviceId]?.cancel()
+        timerJobs.remove(deviceId)
+        val map = _lockTimerRemainingSeconds.value.toMutableMap()
+        map.remove(deviceId)
+        _lockTimerRemainingSeconds.value = map
+
+        viewModelScope.launch {
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "TIMED AUTO-LOCK CANCELLED: Timer disengaged for device '$deviceId'.",
+                    level = "INFO",
+                    deviceId = deviceId
+                )
+            )
+        }
+    }
+
+    fun verifyDeviceConnection(deviceId: String): Pair<Boolean, String> {
+        val dev = devices.value.find { it.id == deviceId }
+        val isOnline = dev?.isOnline ?: false
+        val pingMs = if (isOnline) Random.nextInt(12, 35) else -1
+        val details = if (isOnline) {
+            "VERIFIED • TLS 1.3 AES-256-GCM • Latency: ${pingMs}ms • Socket: Connected"
+        } else {
+            "OFFLINE • Persisted state in Room DB • Device agent pending sync"
+        }
+
+        viewModelScope.launch {
+            repository.insertAuditLog(
+                AuditLogEntity(
+                    timestamp = System.currentTimeMillis(),
+                    message = "SOCKET HANDSHAKE CHECK: Device '${dev?.name ?: deviceId}' -> $details",
+                    level = if (isOnline) "INFO" else "WARNING",
+                    deviceId = deviceId
+                )
+            )
+        }
+        return Pair(isOnline, details)
+    }
+
+    fun lockApp() {
+        _isAppUnlocked.value = false
+        _isAuthenticated.value = false
+    }
+
+    fun setOwnerPasscode(newPin: String) {
+        if (newPin.length >= 4) {
+            viewModelScope.launch {
+                // Save to Room DB
+                repository.insertMasterPin(com.example.data.MasterPinEntity(pin = newPin, updatedAt = System.currentTimeMillis()))
+                _ownerPasscodeFlow.value = newPin
+                sharedPrefs.edit().putString("owner_passcode", newPin).apply()
+
+                // Propagate to all other devices in network
+                devices.value.forEach { dev ->
+                    if (dev.id != agentManager.thisDeviceId) {
+                        triggerRemoteCommand(dev.id, "UPDATE_MASTER_PIN", mapOf("pin" to newPin))
+                    }
+                }
+
+                repository.insertAuditLog(
+                    AuditLogEntity(
+                        timestamp = System.currentTimeMillis(),
+                        message = "🛡️ ADMIN CONFIG DISPATCH: Master PIN updated to '$newPin' in Room database and propagated to all enrolled device installations.",
+                        level = "INFO",
+                        deviceId = "system"
+                    )

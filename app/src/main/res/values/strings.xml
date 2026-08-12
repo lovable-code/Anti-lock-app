@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">SentinelX</string>
+    <string name="device_admin_label">Sentinel-X Security Admin</string>
+    <string name="device_admin_description">Enables remote screen lock and emergency protection features for Sentinel-X Security Agent.</string>
 </resources>

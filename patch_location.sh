@@ -1,0 +1,1 @@
+sed -i 's/private fun getRealLocation(): Pair<Double, Double>? {/import com.google.android.gms.location.LocationServices\nimport kotlinx.coroutines.tasks.await\n\n    @android.annotation.SuppressLint("MissingPermission")\n    private suspend fun getRealLocation(): Pair<Double, Double>? {/g' app/src/main/java/com/example/service/DeviceAgentManager.kt

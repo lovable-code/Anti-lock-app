@@ -6,8 +6,8 @@ import androidx.room.Room
 import androidx.room.RoomDatabase
 
 @Database(
-    entities = [DeviceEntity::class, AuditLogEntity::class, CommandEntity::class],
-    version = 1,
+    entities = [DeviceEntity::class, AuditLogEntity::class, CommandEntity::class, MasterPinEntity::class],
+    version = 2,
     exportSchema = false
 )
 abstract class SentinelDatabase : RoomDatabase() {
@@ -24,7 +24,7 @@ abstract class SentinelDatabase : RoomDatabase() {
                     SentinelDatabase::class.java,
                     "sentinel_db"
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(true)
                 .build()
                 INSTANCE = instance
                 instance

@@ -1,0 +1,54 @@
+--- app/src/main/java/com/example/ui/screens/LocationScreen.kt
++++ app/src/main/java/com/example/ui/screens/LocationScreen.kt
+@@ -37,6 +37,7 @@
+ import androidx.compose.ui.unit.sp
+ import androidx.compose.ui.viewinterop.AndroidView
+ import androidx.lifecycle.compose.LocalLifecycleOwner
++import android.location.Geocoder
+ import com.example.data.DeviceEntity
+ import com.example.ui.SentinelViewModel
+ import com.example.ui.theme.AlertOrange
+@@ -79,6 +80,24 @@
+     val context = LocalContext.current
+     var selectedDeviceId by remember { mutableStateOf(viewModel.localDeviceId) }
+     var showMapOptionsDialog by remember { mutableStateOf(false) }
++    
++    var resolvedAddress by remember { mutableStateOf("Resolving address...") }
++    
++    val activeDevice = devices.find { it.id == selectedDeviceId } ?: devices.firstOrNull()
++    
++    LaunchedEffect(activeDevice?.latitude, activeDevice?.longitude) {
++        if (activeDevice != null) {
++            kotlinx.coroutines.Dispatchers.IO.invoke {
++                try {
++                    val geocoder = Geocoder(context, Locale.getDefault())
++                    val addresses = geocoder.getFromLocation(activeDevice.latitude, activeDevice.longitude, 1)
++                    if (addresses != null && addresses.isNotEmpty()) {
++                        val addr = addresses[0]
++                        val fullAddress = listOfNotNull(addr.locality, addr.adminArea, addr.countryName).joinToString(", ")
++                        resolvedAddress = if (fullAddress.isNotBlank()) fullAddress else "Address not available"
++                    } else {
++                        resolvedAddress = "Address not available"
++                    }
++                } catch (e: Exception) {
++                    resolvedAddress = "Offline / Geocoder unavailable"
++                }
++            }
++        }
++    }
+ 
+     // Configuration states for tactical dashboard
+     var trackingModeHighPrecision by remember { mutableStateOf(true) }
+@@ -621,6 +640,12 @@
+                                             fontSize = 9.5.sp,
+                                             fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                                         )
++                                        Text(
++                                            text = "ADDR: $resolvedAddress",
++                                            color = EmeraldNeon,
++                                            fontSize = 9.5.sp,
++                                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
++                                        )
+                                     }
+                                     Column(horizontalAlignment = Alignment.End) {
+                                         Text(

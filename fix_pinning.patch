@@ -1,0 +1,16 @@
+--- app/src/main/java/com/example/MainActivity.kt
++++ app/src/main/java/com/example/MainActivity.kt
+@@ -274,6 +274,13 @@
+         private var lastGlobalRelaunchTime = 0L
+ 
+         fun isKioskOrLockActive(context: Context): Boolean {
++            val isLoggedIn = try {
++                com.google.firebase.auth.FirebaseAuth.getInstance().currentUser != null
++            } catch (e: Exception) {
++                false
++            }
++            if (!isLoggedIn) return false
++
+             val prefs = context.getSharedPreferences("sentinel_prefs", Context.MODE_PRIVATE)
+             val isKioskActive = prefs.getBoolean("kiosk_mode_enabled", false) ||
+                 prefs.getBoolean("central_lock_enforced", false)

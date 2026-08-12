@@ -1,0 +1,195 @@
+Reusing configuration cache.
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preDebugBuild UP-TO-DATE
+> Task :app:processDebugGoogleServices UP-TO-DATE
+> Task :app:generateDebugBuildConfig UP-TO-DATE
+> Task :app:generateDebugResources UP-TO-DATE
+> Task :app:packageDebugResources UP-TO-DATE
+> Task :app:processDebugNavigationResources UP-TO-DATE
+> Task :app:parseDebugLocalResources UP-TO-DATE
+> Task :app:generateDebugRFile UP-TO-DATE
+> Task :app:kspDebugKotlin
+
+> Task :app:compileDebugKotlin FAILED
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:5 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:12 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:15 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:16 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:22 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:23 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:30 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:31 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:34 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:35 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:43 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:211:44 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:212:1 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:212:8 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:212:15 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:212:16 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:212:26 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:212:27 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:212:32 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:212:33 Syntax error: Expecting member declaration.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:226:39 Unresolved reference 'LocationServices'.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:229:26 Unresolved reference 'latitude'.
+e: file:///app/applet/app/src/main/java/com/example/service/DeviceAgentManager.kt:229:40 Unresolved reference 'longitude'.
+e: file:///app/applet/app/src/main/java/com/example/service/SentinelForegroundService.kt:81:21 Unresolved reference 'processLockPayload'.
+e: file:///app/applet/app/src/main/java/com/example/service/SentinelForegroundService.kt:105:17 Unresolved reference 'startMonitoringLoop'.
+e: file:///app/applet/app/src/main/java/com/example/service/SentinelForegroundService.kt:179:52 Unresolved reference 'wipeDeviceNow'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:137:9 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:159:17 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:374:25 Unresolved reference 'stopLocalAlarmTone'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:392:13 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:402:29 Unresolved reference 'startLocalAlarmTone'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:471:17 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:543:25 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:559:5 Modifier 'private' is not applicable to 'local variable'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:562:5 Modifier 'private' is not applicable to 'local variable'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:563:5 Modifier 'private' is not applicable to 'local variable'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:564:5 Modifier 'private' is not applicable to 'local variable'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:566:5 Unresolved reference 'init'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:593:13 Unresolved reference 'seedInitialDatabase'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:605:13 Unresolved reference 'startLocalAgentSyncAndDrift'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:650:5 Modifier 'private' is not applicable to 'local function'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:770:5 Modifier 'private' is not applicable to 'local function'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:785:70 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:785:76 Unresolved reference 'evaluateGeofence'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:788:68 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:797:21 Unresolved reference 'evaluateGeofence'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:812:17 Unresolved reference 'evaluateGeofence'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:820:75 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:821:13 Unresolved reference 'evaluateGeofence'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:827:75 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:828:13 Unresolved reference 'evaluateGeofence'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:846:13 Unresolved reference 'evaluateGeofence'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:890:17 Unresolved reference 'postGeofenceSystemNotification'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:909:5 Modifier 'private' is not applicable to 'local function'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:992:5 Modifier 'private' is not applicable to 'local variable'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:1016:29 Unresolved reference 'hashSHA256'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelViewModel.kt:1038:14 Syntax error: Expecting '}'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:51:19 Unresolved reference 'SentinelViewModelFactory'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:502:62 Unresolved reference 'triggerLocalBackup'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:509:51 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:511:51 Unresolved reference 'lockApp'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:702:55 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:703:55 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:729:47 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:730:47 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:802:47 Unresolved reference 'toggleDeviceLockOnline'.
+e: file:///app/applet/app/src/main/java/com/example/ui/SentinelXApp.kt:879:79 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:232:66 Unresolved reference 'generateNewPairingCode'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:301:31 Unresolved reference 'setOwnerPasscode'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:582:30 Property delegate must have a 'getValue(Nothing?, KProperty0<ERROR CLASS: Cannot infer argument for type parameter T>)' method. None of the following functions is applicable:
+fun <T> State<T>.getValue(thisObj: Any?, property: KProperty<*>): T
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:582:33 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:582:43 Unresolved reference 'isDiagnosing'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:582:56 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:583:37 Property delegate must have a 'getValue(Nothing?, KProperty0<ERROR CLASS: Cannot infer argument for type parameter T>)' method. None of the following functions is applicable:
+fun <T> State<T>.getValue(thisObj: Any?, property: KProperty<*>): T
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:583:40 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:583:50 Unresolved reference 'diagnosticsProgress'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:583:70 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:712:67 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:717:110 @Composable invocations can only happen from the context of a @Composable function
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:753:47 Unresolved reference 'runResiliencyDiagnostics'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:771:47 Unresolved reference 'autoHealAndReinforceTunnel'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1050:44 Function 'component1()' is ambiguous for this expression: 
+fun <T> Array<out T>.component1(): T
+fun ByteArray.component1(): Byte
+fun ShortArray.component1(): Short
+fun IntArray.component1(): Int
+fun LongArray.component1(): Long
+fun FloatArray.component1(): Float
+fun DoubleArray.component1(): Double
+fun BooleanArray.component1(): Boolean
+fun CharArray.component1(): Char
+fun <T> List<T>.component1(): T
+fun <K, V> Map.Entry<K, V>.component1(): K
+fun UIntArray.component1(): UInt
+fun ULongArray.component1(): ULong
+fun UByteArray.component1(): UByte
+fun UShortArray.component1(): UShort.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1050:44 Function 'component2()' is ambiguous for this expression: 
+fun <T> Array<out T>.component2(): T
+fun ByteArray.component2(): Byte
+fun ShortArray.component2(): Short
+fun IntArray.component2(): Int
+fun LongArray.component2(): Long
+fun FloatArray.component2(): Float
+fun DoubleArray.component2(): Double
+fun BooleanArray.component2(): Boolean
+fun CharArray.component2(): Char
+fun <T> List<T>.component2(): T
+fun <K, V> Map.Entry<K, V>.component2(): V
+fun UIntArray.component2(): UInt
+fun ULongArray.component2(): ULong
+fun UByteArray.component2(): UByte
+fun UShortArray.component2(): UShort.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1050:54 Unresolved reference 'verifyDeviceConnection'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1051:77 Unresolved reference 'show'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1054:35 Unresolved reference 'cancelTimedAutoLock'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1067:39 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1070:39 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1127:78 Unresolved reference 'generateNewPairingCode'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1214:35 Unresolved reference 'enrollNewDevice'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1264:39 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1271:43 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1280:39 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1288:43 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1291:43 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt:1302:39 Unresolved reference 'setTimedAutoLock'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/AdminSubscriptionScreen.kt:119:66 Unresolved reference 'generateNewPairingCode'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/BackupScreen.kt:169:47 Unresolved reference 'triggerLocalBackup'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:406:39 Unresolved reference 'setKioskModeEnabled'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:580:31 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1124:42 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1124:74 Unresolved reference 'getLocalInstalledApplications'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1125:67 Unresolved reference 'it'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1137:59 Cannot infer type for this parameter. Specify it explicitly.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1138:37 @Composable invocations can only happen from the context of a @Composable function
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1141:71 @Composable invocations can only happen from the context of a @Composable function
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1310:59 Unresolved reference 'enrollNewDevice'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1366:39 Unresolved reference 'enrollNewDevice'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/DashboardScreen.kt:1410:35 Unresolved reference 'unenrollDevice'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/HackingConsoleScreen.kt:90:46 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/HackingConsoleScreen.kt:94:46 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/HackingConsoleScreen.kt:271:51 Unresolved reference 'toggleDeviceLockOnline'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/HackingConsoleScreen.kt:342:66 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/HackingConsoleScreen.kt:357:66 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/LocationScreen.kt:69:23 Unresolved reference 'calculateDistanceMeters'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/LocationScreen.kt:704:43 Unresolved reference 'setGeofenceEnabled'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/LocationScreen.kt:757:59 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/LocationScreen.kt:773:59 Unresolved reference 'resetGeofenceLocation'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/LocationScreen.kt:803:53 Unresolved reference 'setSafeZoneRadius'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/LocationScreen.kt:853:47 Unresolved reference 'setSafeZoneToCurrentDeviceLocation'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/LocationScreen.kt:870:51 Unresolved reference 'resetGeofenceLocation'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/LocationScreen.kt:873:51 Unresolved reference 'simulateGeofenceBreach'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:604:35 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:608:35 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:621:35 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:628:35 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:630:35 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:784:51 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:804:47 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:865:39 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/SecurityActionsScreen.kt:946:39 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/WebSocketConsoleScreen.kt:212:39 Unresolved reference 'triggerRemoteCommand'.
+e: file:///app/applet/app/src/main/java/com/example/ui/screens/WebSocketConsoleScreen.kt:286:43 Unresolved reference 'clearLogs'.
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:compileDebugKotlin'.
+> A failure occurred while executing org.jetbrains.kotlin.compilerRunner.GradleCompilerRunnerWithWorkers$GradleKotlinCompilerWorkAction
+   > Compilation error. See log for more details
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights from a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 21s
+9 actionable tasks: 2 executed, 7 up-to-date
+Configuration cache entry reused.

@@ -1,0 +1,24 @@
+--- app/src/main/java/com/example/MainActivity.kt
++++ app/src/main/java/com/example/MainActivity.kt
+@@ -29,11 +29,19 @@
+         override fun onReceive(context: Context, intent: Intent) {
+             when (intent.action) {
+                 "com.example.ACTION_ENFORCE_PINNING" -> {
+                     if (isKioskOrLockActive()) {
+-                        updateLockTask(true)
++                        if (isMainActivityInForeground) {
++                            updateLockTask(true)
++                        } else {
++                            relaunchFromApplication(context)
++                        }
+                     }
+                 }
+                 "com.example.ACTION_UPDATE_LOCK_TASK" -> {
+-                    updateLockTask(isKioskOrLockActive())
++                    if (isMainActivityInForeground || !isKioskOrLockActive()) {
++                        updateLockTask(isKioskOrLockActive())
++                    } else {
++                        relaunchFromApplication(context)
++                    }
+                 }
+             }

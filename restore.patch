@@ -1,0 +1,21 @@
+--- app/src/main/java/com/example/ui/screens/LocationScreen.kt
++++ app/src/main/java/com/example/ui/screens/LocationScreen.kt
+@@ -49,6 +49,17 @@
+ 
+     // Geocoder State
+     var resolvedAddress by remember { mutableStateOf("Resolving address...") }
++    
++    // Interactive Map settings
++    var activeMapEngineGoogle by remember { mutableStateOf(true) } // Default to Google Maps as requested
++    var googleMapType by remember { mutableStateOf("Satellite") } // Satellite, Default, Terrain
++    var mapZoomLevel by remember { mutableStateOf(16) }
++    // Geofencing states from ViewModel
++    val geofenceEnabled by viewModel.geofenceEnabled.collectAsState()
++    val safeCenterLat by viewModel.safeZoneCenterLat.collectAsState()
++    val safeCenterLng by viewModel.safeZoneCenterLng.collectAsState()
++    val safeZoneRadiusMeters by viewModel.safeZoneRadiusMeters.collectAsState()
++    val geofenceBreached by viewModel.geofenceBreached.collectAsState()
++    val geofenceBreachDistance by viewModel.geofenceBreachDistance.collectAsState()
++    val geofenceBreachDeviceName by viewModel.geofenceBreachDeviceName.collectAsState()
+ 
+     val activeDevice = devices.find { it.id == selectedDeviceId } ?: devices.firstOrNull()

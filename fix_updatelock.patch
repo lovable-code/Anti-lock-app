@@ -1,0 +1,20 @@
+--- app/src/main/java/com/example/MainActivity.kt
++++ app/src/main/java/com/example/MainActivity.kt
+@@ -190,11 +190,16 @@
+                 }
+ 
+                 try {
+-                    startLockTask()
+-                    Log.i("MainActivity", "startLockTask() invoked successfully.")
++                    if (isMainActivityInForeground) {
++                        startLockTask()
++                        Log.i("MainActivity", "startLockTask() invoked successfully.")
++                    } else {
++                        Log.i("MainActivity", "Cannot start lock task in background, relaunching.")
++                        relaunchFromApplication(this)
++                    }
+                 } catch (e: Exception) {
+                     Log.e("MainActivity", "Failed to start lock task pinning", e)
+                 }
+             } else if (!combinedActive && isInLockTask) {
+                 try {

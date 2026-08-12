@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,13 +35,13 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WebSocketConsoleScreen(
+fun FCMConsoleScreen(
     viewModel: SentinelViewModel,
     devices: List<DeviceEntity>,
     commands: List<CommandEntity>,
     modifier: Modifier = Modifier
 ) {
-    var selectedDeviceId by remember { mutableStateOf("sentinel-agent-local") }
+    var selectedDeviceId by remember { mutableStateOf(viewModel.localDeviceId) }
     var selectedCommandType by remember { mutableStateOf("GET_STATUS") }
 
     val activeDevice = devices.find { it.id == selectedDeviceId } ?: devices.firstOrNull()
@@ -77,7 +78,7 @@ fun WebSocketConsoleScreen(
                     ) {
                         Column {
                             Text(
-                                text = "WebSocket Tunnel Console",
+                                text = "FCM Cloud Tunnel Console",
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold
                             )
@@ -134,7 +135,7 @@ fun WebSocketConsoleScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "Generate and sign remote instructions. WebSocket commands will cascade in real-time.",
+                        text = "Generate and sign remote instructions. FCM Cloud commands will cascade in real-time.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                     )
@@ -156,7 +157,7 @@ fun WebSocketConsoleScreen(
                             FilterChip(
                                 selected = isSelected,
                                 onClick = { selectedDeviceId = dev.id },
-                                label = { Text(if (dev.id == "sentinel-agent-local") "Local Agent" else dev.name, fontSize = 11.sp) },
+                                label = { Text(if (dev.id == viewModel.localDeviceId) "Local Agent" else dev.name, fontSize = 11.sp) },
                                 modifier = Modifier.testTag("ws_device_chip_${dev.id}")
                             )
                         }
@@ -219,7 +220,7 @@ fun WebSocketConsoleScreen(
                             .testTag("send_payload_button")
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Send, contentDescription = "Send", modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "Send", modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Sign & Inject Secure Payload", fontWeight = FontWeight.Bold)
                         }
@@ -244,7 +245,7 @@ fun WebSocketConsoleScreen(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "WebSocket Packet Stepper Flow",
+                            text = "FCM Cloud Packet Stepper Flow",
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.fillMaxWidth()
@@ -295,7 +296,7 @@ fun WebSocketConsoleScreen(
         if (commands.isEmpty()) {
             item {
                 Text(
-                    text = "No WebSocket frames sent yet. Inject a payload to monitor crypt-handshakes.",
+                    text = "No FCM Cloud frames sent yet. Inject a payload to monitor crypt-handshakes.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                     modifier = Modifier.fillMaxWidth().padding(vertical = 12.dp),

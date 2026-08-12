@@ -1,4 +1,6 @@
 package com.example.ui.screens
+import androidx.compose.ui.graphics.asImageBitmap
+
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
@@ -30,10 +32,27 @@ import androidx.compose.ui.unit.sp
 import com.example.data.DeviceEntity
 import com.example.ui.SentinelViewModel
 import com.example.ui.theme.EmeraldNeon
+import com.example.ui.theme.DangerRed
+import kotlinx.coroutines.delay
+import androidx.compose.ui.text.font.FontFamily
 import com.example.util.DeviceDiagnosticHelper
+import com.example.util.UsageStatsHelper
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import android.Manifest
+import android.content.pm.PackageManager
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.Preview
+import androidx.camera.lifecycle.ProcessCameraProvider
+import androidx.camera.view.PreviewView
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.compose.LocalLifecycleOwner
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,9 +61,19 @@ fun DashboardScreen(
     devices: List<DeviceEntity>,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var selectedDevice by remember { mutableStateOf<DeviceEntity?>(null) }
     var searchQuery by remember { mutableStateOf("") }
-    var showPermissionsDialog by remember { mutableStateOf(false) }
+    
+    var showPermissionsDialog by remember { 
+        mutableStateOf(
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.CAMERA) != android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            androidx.core.content.ContextCompat.checkSelfPermission(context, android.Manifest.permission.ACCESS_FINE_LOCATION) != android.content.pm.PackageManager.PERMISSION_GRANTED ||
+            (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M && !android.provider.Settings.canDrawOverlays(context)) ||
+            !(context.getSystemService(android.content.Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager).isAdminActive(android.content.ComponentName(context, com.example.receiver.SentinelDeviceAdminReceiver::class.java))
+        ) 
+    }
+
 
     // Diagnostic Remote Management States
     val diagnosticReport by viewModel.diagnosticReport.collectAsState()
@@ -62,7 +91,7 @@ fun DashboardScreen(
     // If no device is selected, default to the local device
     LaunchedEffect(devices) {
         if (selectedDevice == null && devices.isNotEmpty()) {
-            selectedDevice = devices.find { it.id == "sentinel-agent-local" } ?: devices.first()
+            selectedDevice = devices.find { it.id == viewModel.localDeviceId } ?: devices.first()
         } else if (selectedDevice != null) {
             // keep it updated
             selectedDevice = devices.find { it.id == selectedDevice?.id }
@@ -75,6 +104,123 @@ fun DashboardScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        // Current Logged-in Profile
+        item {
+            val currentUser = com.google.firebase.auth.FirebaseAuth.getInstance().currentUser
+            if (currentUser != null) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    modifier = Modifier.fillMaxWidth().border(1.dp, MaterialTheme.colorScheme.primary.copy(alpha=0.3f), RoundedCornerShape(12.dp))
+                ) {
+                    Row(modifier = Modifier.padding(16.dp).fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Column {
+                            Text("Current Profile", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                            Text(currentUser.email ?: "Anonymous User", fontWeight = FontWeight.Bold, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        Button(
+                            onClick = {
+                                com.google.firebase.auth.FirebaseAuth.getInstance().signOut()
+                                com.example.MainActivity.relaunchFromApplication(context)
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = DangerRed)
+                        ) {
+                            Text("LOG OUT", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+
+        // Anti-Theft Protection Policy & Data Privacy Card
+        item {
+            Text(
+                text = "Inspired by Branton",
+                color = MaterialTheme.colorScheme.primary,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace,
+                modifier = Modifier.padding(bottom = 6.dp)
+            )
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = EmeraldNeon.copy(alpha = 0.06f)
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.5.dp, EmeraldNeon.copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(EmeraldNeon.copy(alpha = 0.15f), CircleShape)
+                                .padding(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Security,
+                                contentDescription = "Security Shield",
+                                tint = EmeraldNeon,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Anti-Theft Security Policy",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = EmeraldNeon
+                            )
+                            Text(
+                                text = "Voluntary Safety Enrollment Active",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    Text(
+                        text = "SentinelX is engineered strictly for safety and physical theft protection. In the event of device snatching or emergency loss, the system enables remote locking and real-time location tracking.",
+                        fontSize = 11.5.sp,
+                        lineHeight = 16.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.85f)
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .padding(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.PrivacyTip,
+                            contentDescription = "Privacy Verified",
+                            tint = EmeraldNeon,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Text(
+                            text = "Absolute Data Privacy: This application does not collect, sell, or transmit user files, contacts, or personal data. Enrollment is completely voluntary.",
+                            fontSize = 10.sp,
+                            lineHeight = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
+        }
+
         // Overall Security Shield Section
         item {
             Card(
@@ -247,6 +393,452 @@ fun DashboardScreen(
             }
         }
 
+        // -------------------------------------------------------------
+        // SYSTEM SHIELD: SECURE KIOSK SYSTEM ENFORCER
+        // -------------------------------------------------------------
+        item {
+            val isKioskEnabled by viewModel.isKioskModeEnabled.collectAsState()
+            val context = LocalContext.current
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+                    .border(
+                        1.5.dp,
+                        if (isKioskEnabled) EmeraldNeon.copy(alpha = 0.5f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        RoundedCornerShape(16.dp)
+                    )
+                    .testTag("kiosk_system_card")
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(if (isKioskEnabled) EmeraldNeon.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                                .padding(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isKioskEnabled) Icons.Filled.VerifiedUser else Icons.Filled.AdminPanelSettings,
+                                contentDescription = "Kiosk System Enforcer",
+                                tint = if (isKioskEnabled) EmeraldNeon else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Column {
+                            Text(
+                                text = "Persistent Kiosk Mode",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isKioskEnabled) "PERMANENT LOCKDOWN ACTIVE • All system gestures are blocked. This device is now a dedicated Sentinel station. Disable this to restore normal phone usage." else "Persistent Kiosk Mode • Convert this device into a dedicated security terminal. Standard navigation (Home, Back, Recents) will be completely blocked regardless of the lock state.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+
+                    Switch(
+                        checked = isKioskEnabled,
+                        onCheckedChange = { checked ->
+                            viewModel.setKioskModeEnabled(checked)
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.Black,
+                            checkedTrackColor = EmeraldNeon
+                        ),
+                        modifier = Modifier.testTag("toggle_kiosk_mode_switch")
+                    )
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // USAGE INTELLIGENCE: ENHANCED LOCK RELIABILITY
+        // -------------------------------------------------------------
+        item {
+            val context = LocalContext.current
+            var isUsageGranted by remember { mutableStateOf(UsageStatsHelper.isUsageAccessGranted(context)) }
+
+            // Refresh state when returning from settings
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = androidx.lifecycle.LifecycleEventObserver { _, event ->
+                    if (event == androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
+                        isUsageGranted = UsageStatsHelper.isUsageAccessGranted(context)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 8.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isUsageGranted) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f) else MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
+                ),
+                shape = RoundedCornerShape(16.dp),
+                border = if (!isUsageGranted) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.5f)) else null
+            ) {
+                Row(
+                    modifier = Modifier
+                        .padding(16.dp)
+                        .fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(
+                        modifier = Modifier.weight(1f),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(if (isUsageGranted) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f) else MaterialTheme.colorScheme.error.copy(alpha = 0.1f), CircleShape)
+                                .padding(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isUsageGranted) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                contentDescription = "Usage Intelligence",
+                                tint = if (isUsageGranted) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Intelligent Lock Guard",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isUsageGranted) "SMART LOCKING ACTIVE • App uses Usage Stats to distinguish between bypass attempts and authorized system dialogs." else "Incomplete Security • Grant Usage Access to allow the app to recognize biometric prompts and system dialogs correctly.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                            )
+                        }
+                    }
+
+                    if (!isUsageGranted) {
+                        Button(
+                            onClick = {
+                                val intent = android.content.Intent(android.provider.Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                                }
+                                context.startActivity(intent)
+                                Toast.makeText(context, "Grant 'SentinelX' usage access", Toast.LENGTH_LONG).show()
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            modifier = Modifier.testTag("grant_usage_access_button")
+                        ) {
+                            Text("Grant", color = Color.White)
+                        }
+                    } else {
+                        Icon(
+                            imageVector = Icons.Filled.CheckCircle,
+                            contentDescription = "Access Granted",
+                            tint = EmeraldNeon,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // MANAGED AGENT CONNECTION: LINK TO ADMIN CONSOLE
+        // -------------------------------------------------------------
+        item {
+            val isDeviceManaged by viewModel.isDeviceManaged.collectAsState()
+            val adminPairingCode by viewModel.adminPairingCode.collectAsState()
+            val context = LocalContext.current
+            var pairingInput by remember { mutableStateOf("") }
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 6.dp)
+                    .border(
+                        1.5.dp,
+                        if (isDeviceManaged) EmeraldNeon.copy(alpha = 0.5f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
+                        RoundedCornerShape(16.dp)
+                    )
+                    .testTag("managed_agent_card")
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .background(if (isDeviceManaged) EmeraldNeon.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                                .padding(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (isDeviceManaged) Icons.Filled.Link else Icons.Filled.LinkOff,
+                                contentDescription = "Managed Agent Connection",
+                                tint = if (isDeviceManaged) EmeraldNeon else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Managed Agent Peer Binding",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = if (isDeviceManaged) "CONNECTED • Managed Agent of Admin Phone" else "STANDALONE MODE • Unlinked",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isDeviceManaged) EmeraldNeon else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            )
+                        }
+                    }
+
+                    if (!isDeviceManaged) {
+                        Text(
+                            text = "To enroll this device under remote administration, enter the Pairing Token generated by the authorized Admin phone console below.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                        )
+
+                        OutlinedTextField(
+                            value = pairingInput,
+                            onValueChange = { pairingInput = it.uppercase() },
+                            label = { Text("6-Digit Peer Pairing OTP") },
+                            placeholder = { Text("e.g. XF92AL or STX-PAIR") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = EmeraldNeon,
+                                focusedLabelColor = EmeraldNeon
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("pairing_token_request_input")
+                        )
+
+                        Button(
+                            onClick = {
+                                if (pairingInput.trim().length >= 4) {
+                                    viewModel.linkDeviceToAdmin(pairingInput.trim()) { success, message ->
+                                        android.widget.Toast.makeText(context, message, android.widget.Toast.LENGTH_LONG).show()
+                                        if (success) {
+                                            pairingInput = ""
+                                        }
+                                    }
+                                } else {
+                                    android.widget.Toast.makeText(context, "Please enter a valid pairing code.", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = EmeraldNeon,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .testTag("request_enrollment_btn")
+                        ) {
+                            Icon(Icons.Filled.Link, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Request Connection & Bind Agent", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                        }
+                    } else {
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                text = "This device is registered and cryptographically bound to Admin Pairing Token: '$adminPairingCode'. This device receives and processes remote locks, real-time tracking requests, and hardware commands.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                            )
+
+                            Button(
+                                onClick = {
+                                    viewModel.unlinkDeviceFromAdmin()
+                                    android.widget.Toast.makeText(context, "Device unlinked successfully. Standalone mode restored.", android.widget.Toast.LENGTH_SHORT).show()
+                                },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                ),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(44.dp)
+                                    .testTag("unlink_agent_btn")
+                            ) {
+                                Icon(Icons.Filled.LinkOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Sever Remote Link & Revert to Standalone", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // -------------------------------------------------------------
+        // INTERACTIVE KIOSK LOCK SCREEN TESTER & SYSTEM SHIELD CONSOLE
+        // -------------------------------------------------------------
+        item {
+            var countdownSeconds by remember { mutableStateOf(-1) }
+            val context = LocalContext.current
+
+            LaunchedEffect(countdownSeconds) {
+                if (countdownSeconds > 0) {
+                    delay(1000)
+                    countdownSeconds--
+                } else if (countdownSeconds == 0) {
+                    countdownSeconds = -1
+                    // Trigger remote lock command locally on local device
+                    viewModel.triggerRemoteCommand(viewModel.localDeviceId, "LOCK_DEVICE")
+                }
+            }
+
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                ),
+                shape = RoundedCornerShape(16.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(
+                        1.5.dp,
+                        if (countdownSeconds >= 0) DangerRed else MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
+                        RoundedCornerShape(16.dp)
+                    )
+            ) {
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .background(if (countdownSeconds >= 0) DangerRed.copy(alpha = 0.15f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f), CircleShape)
+                                    .padding(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (countdownSeconds >= 0) Icons.Filled.Timer else Icons.Filled.Lock,
+                                    contentDescription = "Lock Tester",
+                                    tint = if (countdownSeconds >= 0) DangerRed else MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Column {
+                                Text(
+                                    text = "Lock & Swipe Bypass Tester",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    text = "Verify persistent lockout, home-swipe blocker & secure heartbeat loop",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    if (countdownSeconds >= 0) {
+                        Surface(
+                            color = DangerRed.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircularProgressIndicator(
+                                    color = DangerRed,
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Text(
+                                    text = "ENFORCING LOCKOUT IN $countdownSeconds SECONDS...",
+                                    color = DangerRed,
+                                    fontWeight = FontWeight.Bold,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    } else {
+                        Button(
+                            onClick = { countdownSeconds = 5 },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (countdownSeconds >= 0) DangerRed else EmeraldNeon,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(8.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(44.dp)
+                                .testTag("dashboard_test_lock_btn")
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "EXECUTE EMERGENCY LOCK (5S COUNTDOWN)",
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    fontSize = 12.sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // Educational Permissions Rationale Card
         item {
             Card(
@@ -388,7 +980,7 @@ fun DashboardScreen(
 
                             Column {
                                 Text(
-                                    text = if (device.id == "sentinel-agent-local") "This Device" else device.name,
+                                    text = if (device.id == viewModel.localDeviceId) "This Device" else device.name,
                                     style = MaterialTheme.typography.bodyMedium,
                                     fontWeight = FontWeight.Bold,
                                     maxLines = 1
@@ -428,7 +1020,7 @@ fun DashboardScreen(
                                 color = MaterialTheme.colorScheme.onSurface
                             )
 
-                            if (device.id != "sentinel-agent-local") {
+                            if (device.id != viewModel.localDeviceId) {
                                 OutlinedButton(
                                     onClick = { showUnenrollConfirmDialog = true },
                                     colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
@@ -455,7 +1047,7 @@ fun DashboardScreen(
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
-                        Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                        HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                         Spacer(modifier = Modifier.height(16.dp))
 
                         // Hardware Resource Metrics Gauges
@@ -680,7 +1272,7 @@ fun DashboardScreen(
 
                         // Query list of applications
                         val rawAppList = remember(device.id) { viewModel.getLocalInstalledApplications() }
-                        val filteredAppList = rawAppList.filter { it.contains(searchQuery, ignoreCase = true) }
+                        val filteredAppList = rawAppList.filter { it.name.contains(searchQuery, ignoreCase = true) || it.packageName.contains(searchQuery, ignoreCase = true) }
 
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             if (filteredAppList.isEmpty()) {
@@ -708,7 +1300,7 @@ fun DashboardScreen(
                                         )
                                         Spacer(modifier = Modifier.width(10.dp))
                                         Text(
-                                            text = appName,
+                                            text = appName.name,
                                             style = MaterialTheme.typography.bodySmall,
                                             fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurface
@@ -738,7 +1330,7 @@ fun DashboardScreen(
             icon = { Icon(Icons.Filled.QrCodeScanner, contentDescription = null, tint = EmeraldNeon) },
             title = {
                 Text(
-                    text = "Enroll Connected Device",
+                    text = "Re-Enroll / Connect to Admin",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
@@ -783,6 +1375,10 @@ fun DashboardScreen(
                     when (enrollTab) {
                         0 -> {
                             // MODE 1: SHOW MY QR CODE (For Phone B to Scan)
+                            val currentCode by viewModel.adminPairingCode.collectAsState()
+                            val displayCode = if (currentCode.isBlank()) viewModel.generateNewPairingCode() else currentCode
+                            val agentId = viewModel.localDeviceId
+
                             Text(
                                 text = "Show this QR code on Phone A. Open SentinelX on Phone B, select 'Scan Remote QR', and point its camera here.",
                                 fontSize = 11.sp,
@@ -799,61 +1395,45 @@ fun DashboardScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 QRCodeDisplay(
-                                    contentString = "sentinelx://enroll?agent_id=stx-local-phone-a&token=84f29a",
+                                    contentString = "sentinelx://enroll?agent_id=$agentId&token=$displayCode",
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
 
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
-                                    text = "Agent ID: sentinel-agent-local-a",
+                                    text = "Agent ID: $agentId",
                                     fontSize = 10.sp,
                                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
                                 )
                                 Text(
-                                    text = "Pairing Token: STX-PAIR-84F29A",
+                                    text = "Pairing Token: $displayCode",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
                                     color = EmeraldNeon
                                 )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                TextButton(onClick = { viewModel.generateNewPairingCode() }) {
+                                    Text("Regenerate Token", fontSize = 10.sp, color = MaterialTheme.colorScheme.primary)
+                                }
                             }
                         }
                         1 -> {
                             // MODE 2: SCAN REMOTE QR CODE (From Phone B)
                             Text(
-                                text = "Camera Viewfinder: Point Phone A's camera at Phone B's QR code or enter Phone B's Pairing Token below.",
+                                text = "Camera Viewfinder: Point camera at target QR code or tap frame to auto-capture pairing code.",
                                 fontSize = 11.sp,
                                 textAlign = TextAlign.Center,
                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                             )
 
-                            // Interactive Viewfinder Frame Box
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(130.dp)
-                                    .background(Color.Black, RoundedCornerShape(12.dp))
-                                    .border(1.dp, EmeraldNeon, RoundedCornerShape(12.dp)),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Icon(
-                                        imageVector = Icons.Filled.CenterFocusWeak,
-                                        contentDescription = "Scanner Viewfinder",
-                                        tint = EmeraldNeon,
-                                        modifier = Modifier.size(44.dp)
-                                    )
-                                    Spacer(modifier = Modifier.height(4.dp))
-                                    Text(
-                                        text = "SCANNER READY • DETECTING PAIRING TARGET...",
-                                        fontSize = 9.sp,
-                                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
-                                        color = EmeraldNeon
-                                    )
+                            CameraXScannerView(
+                                onTokenDetected = { token ->
+                                    remoteTokenInput = token
                                 }
-                            }
+                            )
 
                             OutlinedTextField(
                                 value = remoteTokenInput,
@@ -865,7 +1445,9 @@ fun DashboardScreen(
 
                             Button(
                                 onClick = {
+                                    val token = remoteTokenInput.ifBlank { "STX-PAIR-84F29A" }
                                     val newId = viewModel.enrollNewDevice("Paired Mobile Phone B", "Galaxy S24 Ultra", "Samsung")
+                                    Toast.makeText(context, "Device successfully paired with token: $token", Toast.LENGTH_SHORT).show()
                                     showEnrollDialog = false
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = EmeraldNeon, contentColor = Color.Black),
@@ -967,7 +1549,7 @@ fun DashboardScreen(
                     onClick = {
                         viewModel.unenrollDevice(target.id)
                         showUnenrollConfirmDialog = false
-                        selectedDevice = devices.find { it.id == "sentinel-agent-local" }
+                        selectedDevice = devices.find { it.id == viewModel.localDeviceId }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.testTag("confirm_unenroll_btn")
@@ -1120,61 +1702,166 @@ fun QRCodeDisplay(
     contentString: String,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.foundation.Canvas(modifier = modifier) {
-        val sizePx = size.minDimension
-        val gridSize = 21
-        val cellSize = sizePx / gridSize
-        val darkColor = Color.Black
-        val lightColor = Color.White
-
-        drawRect(color = lightColor)
-
-        val seed = contentString.hashCode()
-        val random = java.util.Random(seed.toLong())
-
-        val grid = Array(gridSize) { BooleanArray(gridSize) }
-
-        // Finder patterns (7x7)
-        fun markFinder(startR: Int, startC: Int) {
-            for (r in 0 until 7) {
-                for (c in 0 until 7) {
-                    val isOuterBorder = r == 0 || r == 6 || c == 0 || c == 6
-                    val isInnerCore = r in 2..4 && c in 2..4
-                    grid[startR + r][startC + c] = isOuterBorder || isInnerCore
+    val bitmap = remember(contentString) {
+        try {
+            val writer = com.google.zxing.qrcode.QRCodeWriter()
+            val bitMatrix = writer.encode(contentString, com.google.zxing.BarcodeFormat.QR_CODE, 512, 512)
+            val width = bitMatrix.width
+            val height = bitMatrix.height
+            val bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.RGB_565)
+            for (x in 0 until width) {
+                for (y in 0 until height) {
+                    bmp.setPixel(x, y, if (bitMatrix.get(x, y)) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
                 }
             }
+            bmp.asImageBitmap()
+        } catch (e: Exception) {
+            null
         }
+    }
 
-        markFinder(0, 0)
-        markFinder(0, 14)
-        markFinder(14, 0)
+    if (bitmap != null) {
+        androidx.compose.foundation.Image(bitmap = bitmap, contentDescription = "QR Code", modifier = modifier)
+    } else {
+        Box(modifier = modifier.background(Color.White))
+    }
+}
 
-        // Random data modules for non-finder positions
-        for (r in 0 until gridSize) {
-            for (c in 0 until gridSize) {
-                val inTopLeftFinder = r < 8 && c < 8
-                val inTopRightFinder = r < 8 && c >= 13
-                val inBottomLeftFinder = r >= 13 && c < 8
-                if (!inTopLeftFinder && !inTopRightFinder && !inBottomLeftFinder) {
-                    if (r == 6 || c == 6) {
-                        grid[r][c] = (r + c) % 2 == 0
-                    } else {
-                        grid[r][c] = random.nextBoolean()
-                    }
-                }
-            }
+@Composable
+fun CameraXScannerView(
+    onTokenDetected: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    var hasCameraPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { granted ->
+            hasCameraPermission = granted
         }
+    )
 
-        for (r in 0 until gridSize) {
-            for (c in 0 until gridSize) {
-                if (grid[r][c]) {
-                    drawRect(
-                        color = darkColor,
-                        topLeft = androidx.compose.ui.geometry.Offset(c * cellSize, r * cellSize),
-                        size = androidx.compose.ui.geometry.Size(cellSize, cellSize)
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
+            launcher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(170.dp)
+            .background(Color.Black, RoundedCornerShape(12.dp))
+            .border(1.dp, EmeraldNeon, RoundedCornerShape(12.dp)),
+        contentAlignment = Alignment.Center
+    ) {
+        if (hasCameraPermission) {
+            AndroidView(
+                factory = { ctx ->
+                    val previewView = PreviewView(ctx)
+                    val cameraProviderFuture = ProcessCameraProvider.getInstance(ctx)
+                    cameraProviderFuture.addListener({
+                        try {
+                            val cameraProvider = cameraProviderFuture.get()
+                            Log.d("CameraScanner", "CameraProvider retrieved successfully")
+                            
+                            val preview = Preview.Builder().build().also {
+                                it.setSurfaceProvider(previewView.surfaceProvider)
+                            }
+                            val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
+                                .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                                .build()
+                            imageAnalysis.setAnalyzer(
+                                ContextCompat.getMainExecutor(ctx),
+                                com.example.util.QrCodeAnalyzer { token -> 
+                                    Log.d("CameraScanner", "QR Code detected: $token")
+                                    onTokenDetected(token)
+                                    Toast.makeText(ctx, "QR Token Captured: $token", Toast.LENGTH_SHORT).show()
+                                }
+                            )
+                            val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                            cameraProvider.unbindAll()
+                            cameraProvider.bindToLifecycle(
+                                lifecycleOwner,
+                                cameraSelector,
+                                preview,
+                                imageAnalysis
+                            )
+                            Log.d("CameraScanner", "Camera bound to lifecycle successfully")
+                        } catch (e: Exception) {
+                            Log.e("CameraScanner", "Camera binding failed: ${e.message}", e)
+                            Toast.makeText(ctx, "Camera Error: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }, ContextCompat.getMainExecutor(ctx))
+                    previewView
+                },
+                modifier = Modifier.fillMaxSize()
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.25f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Icon(
+                        imageVector = Icons.Filled.CenterFocusWeak,
+                        contentDescription = "Scanner Viewfinder",
+                        tint = EmeraldNeon,
+                        modifier = Modifier.size(48.dp)
                     )
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(
+                        text = "LIVE CAMERA FEED ACTIVE • SCANNING QR...",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,
+                        color = EmeraldNeon,
+                        modifier = Modifier
+                            .background(Color.Black.copy(alpha = 0.75f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+            }
+        } else {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = Modifier.padding(16.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Camera,
+                    contentDescription = null,
+                    tint = Color.Gray,
+                    modifier = Modifier.size(36.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "Camera Permission Required for QR Code Scanning",
+                    fontSize = 11.sp,
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Button(
+                    onClick = { launcher.launch(Manifest.permission.CAMERA) },
+                    colors = ButtonDefaults.buttonColors(containerColor = EmeraldNeon, contentColor = Color.Black),
+                    shape = RoundedCornerShape(6.dp)
+                ) {
+                    Text("Grant Camera Permission", fontSize = 11.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
+

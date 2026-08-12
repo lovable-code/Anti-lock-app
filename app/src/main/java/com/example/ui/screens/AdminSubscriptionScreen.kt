@@ -70,28 +70,27 @@ fun AdminSubscriptionScreen(
 
                     Spacer(modifier = Modifier.height(20.dp))
 
-                    // Draw a Simulated QR Code using Canvas Boxes
+                    // Real QR Code Display
                     Box(
                         modifier = Modifier
-                            .size(130.dp)
-                            .background(Color.White, RoundedCornerShape(8.dp))
-                            .padding(8.dp),
+                            .size(150.dp)
+                            .background(Color.White, RoundedCornerShape(12.dp))
+                            .border(2.dp, EmeraldNeon, RoundedCornerShape(12.dp))
+                            .padding(10.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            repeat(6) { row ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    repeat(6) { col ->
-                                        // Randomly colored black/white boxes representing a QR grid
-                                        val isBlack = (row + col) % 2 == 0 || (row == 0 && col == 0) || (row == 5 && col == 5) || (row == 0 && col == 5) || (row == 5 && col == 0)
-                                        Box(
-                                            modifier = Modifier
-                                                .size(16.dp)
-                                                .background(if (isBlack) Color.Black else Color.White)
-                                        )
-                                    }
-                                }
-                            }
+                        if (generatedOtpCode.isNotEmpty()) {
+                            com.example.ui.screens.QRCodeDisplay(
+                                contentString = "sentinelx://enroll?token=$generatedOtpCode",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.QrCode,
+                                contentDescription = "Pending OTP",
+                                tint = Color.LightGray,
+                                modifier = Modifier.size(64.dp)
+                            )
                         }
                     }
 

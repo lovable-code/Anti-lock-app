@@ -56,8 +56,16 @@ fun EducationalPermissionsDialog(
         )
     )
 
-    val runtimePermissionsGranted = permissionsState.allPermissionsGranted
-    val allGranted = runtimePermissionsGranted && hasOverlayPermission
+    
+    var isAdminActive by remember {
+        mutableStateOf(
+            (context.getSystemService(android.content.Context.DEVICE_POLICY_SERVICE) as android.app.admin.DevicePolicyManager)
+                .isAdminActive(android.content.ComponentName(context, com.example.receiver.SentinelDeviceAdminReceiver::class.java))
+        )
+    }
+val runtimePermissionsGranted = permissionsState.allPermissionsGranted
+    val allGranted = runtimePermissionsGranted && hasOverlayPermission && isAdminActive
+    
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -140,7 +148,16 @@ fun EducationalPermissionsDialog(
                     testTag = "overlay_rationale_card"
                 )
 
-                // Privacy Commitment Note
+                
+                // Rationale Card 4: Device Admin
+                PermissionRationaleCard(
+                    title = "Device Administrator",
+                    description = "Required to enforce device lock, wipe data on unauthorized access, and prevent app uninstallation by thieves.",
+                    icon = Icons.Filled.Security,
+                    isGranted = isAdminActive,
+                    testTag = "admin_rationale_card"
+                )
+// Privacy Commitment Note
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -184,7 +201,20 @@ fun EducationalPermissionsDialog(
                         if (!runtimePermissionsGranted) {
                             permissionsState.launchMultiplePermissionRequest()
                         }
-                        if (!hasOverlayPermission && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                        
+                        if (!isAdminActive) {
+                            val componentName = android.content.ComponentName(context, com.example.receiver.SentinelDeviceAdminReceiver::class.java)
+                            val intent = Intent(android.app.admin.DevicePolicyManager.ACTION_ADD_DEVICE_ADMIN).apply {
+                                putExtra(android.app.admin.DevicePolicyManager.EXTRA_DEVICE_ADMIN, componentName)
+                                putExtra(android.app.admin.DevicePolicyManager.EXTRA_ADD_EXPLANATION, "SentinelX requires Device Admin access to enforce remote lock and wipe capabilities.")
+                            }
+                            try {
+                                context.startActivity(intent)
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            }
+                        }
+if (!hasOverlayPermission && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
                             val intent = Intent(
                                 Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                                 Uri.parse("package:${context.packageName}")

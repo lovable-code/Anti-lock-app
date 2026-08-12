@@ -1,0 +1,85 @@
+--- app/src/main/java/com/example/ui/screens/DashboardScreen.kt
++++ app/src/main/java/com/example/ui/screens/DashboardScreen.kt
+@@ -1585,62 +1585,27 @@
+ fun QRCodeDisplay(
+     contentString: String,
+     modifier: Modifier = Modifier
+ ) {
+-    androidx.compose.foundation.Canvas(modifier = modifier) {
+-        val sizePx = size.minDimension
+-        val gridSize = 21
+-        val cellSize = sizePx / gridSize
+-        val darkColor = Color.Black
+-        val lightColor = Color.White
+-
+-        drawRect(color = lightColor)
+-
+-        val seed = contentString.hashCode()
+-        val random = java.util.Random(seed.toLong())
+-
+-        val grid = Array(gridSize) { BooleanArray(gridSize) }
+-
+-        // Finder patterns (7x7)
+-        fun markFinder(startR: Int, startC: Int) {
+-            for (r in 0 until 7) {
+-                for (c in 0 until 7) {
+-                    val isOuterBorder = r == 0 || r == 6 || c == 0 || c == 6
+-                    val isInnerCore = r in 2..4 && c in 2..4
+-                    grid[startR + r][startC + c] = isOuterBorder || isInnerCore
++    val bitmap = remember(contentString) {
++        try {
++            val writer = com.google.zxing.qrcode.QRCodeWriter()
++            val bitMatrix = writer.encode(contentString, com.google.zxing.BarcodeFormat.QR_CODE, 512, 512)
++            val width = bitMatrix.width
++            val height = bitMatrix.height
++            val bmp = android.graphics.Bitmap.createBitmap(width, height, android.graphics.Bitmap.Config.RGB_565)
++            for (x in 0 until width) {
++                for (y in 0 until height) {
++                    bmp.setPixel(x, y, if (bitMatrix.get(x, y)) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+                 }
+             }
++            androidx.compose.ui.graphics.asImageBitmap(bmp)
++        } catch (e: Exception) {
++            null
+         }
+-
+-        markFinder(0, 0)
+-        markFinder(0, 14)
+-        markFinder(14, 0)
+-
+-        // Random data modules for non-finder positions
+-        for (r in 0 until gridSize) {
+-            for (c in 0 until gridSize) {
+-                val inTopLeftFinder = r < 8 && c < 8
+-                val inTopRightFinder = r < 8 && c >= 13
+-                val inBottomLeftFinder = r >= 13 && c < 8
+-
+-                if (!inTopLeftFinder && !inTopRightFinder && !inBottomLeftFinder) {
+-                    if (r == 6 || c == 6) {
+-                        grid[r][c] = (r + c) % 2 == 0
+-                    } else {
+-                        grid[r][c] = random.nextBoolean()
+-                    }
+-                }
+-            }
+-        }
+-
+-        for (r in 0 until gridSize) {
+-            for (c in 0 until gridSize) {
+-                if (grid[r][c]) {
+-                    drawRect(
+-                        color = darkColor,
+-                        topLeft = androidx.compose.ui.geometry.Offset(c * cellSize, r * cellSize),
+-                        size = androidx.compose.ui.geometry.Size(cellSize, cellSize)
+-                    )
+-                }
+-            }
+-        }
+     }
++
++    if (bitmap != null) {
++        androidx.compose.foundation.Image(bitmap = bitmap, contentDescription = "QR Code", modifier = modifier)
++    } else {
++        Box(modifier = modifier.background(Color.White))
++    }
+ }

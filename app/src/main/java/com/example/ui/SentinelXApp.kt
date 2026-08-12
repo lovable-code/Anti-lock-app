@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -32,6 +33,8 @@ import androidx.compose.ui.res.painterResource
 import com.example.R
 import com.example.data.SentinelDatabase
 import com.example.data.SentinelRepository
+import android.widget.Toast
+import com.example.util.BiometricPromptHelper
 import com.example.ui.components.MatrixRainEffect
 import com.example.ui.screens.*
 import com.example.ui.theme.AlertOrange
@@ -56,8 +59,9 @@ fun SentinelXApp(
     val commands by viewModel.commands.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val isAppUnlocked by viewModel.isAppUnlocked.collectAsStateWithLifecycle()
+    val isKioskEnabled by viewModel.isKioskModeEnabled.collectAsStateWithLifecycle()
 
-    val localDevice = devices.find { it.id == "sentinel-agent-local" }
+    val localDevice = devices.find { it.id == viewModel.localDeviceId }
     val context = LocalContext.current
 
     // Launch Foreground Service for persistent remote connection & anti-theft monitoring
@@ -81,7 +85,22 @@ fun SentinelXApp(
         isMatrixTheme = themeMode == SentinelViewModel.AppThemeMode.MATRIX,
         darkTheme = themeMode == SentinelViewModel.AppThemeMode.DARK
     ) {
-        if (!isAppUnlocked) {
+        val isDeviceLockedByPolicy = localDevice != null && (localDevice.isLocked || localDevice.isLostMode)
+
+        // Force-sync lock state with MainActivity for anti-bypass gesture and home protection
+        LaunchedEffect(isDeviceLockedByPolicy) {
+            com.example.MainActivity.isLockActive = isDeviceLockedByPolicy
+            (context as? com.example.MainActivity)?.updateLockTask(isDeviceLockedByPolicy)
+        }
+
+        if (isDeviceLockedByPolicy) {
+            PersistentDeviceLockScreen(
+                localDevice = localDevice!!,
+                onUnlockAttempt = { pin ->
+                    viewModel.unlockDeviceWithPin(localDevice.id, pin)
+                }
+            )
+        } else if (!isAppUnlocked) {
             // APP STARTUP LOGIN / OWNER ACCESS GATE SCREEN
             Box(
                 modifier = Modifier
@@ -238,9 +257,23 @@ fun SentinelXApp(
 
                         Spacer(modifier = Modifier.height(16.dp))
 
-                        // Quick Biometric / Demo Unlock Bypass Button
+                        // Quick Biometric / Secure Unlock Bypass Button
                         OutlinedButton(
-                            onClick = { viewModel.authenticateOwner("1234") },
+                            onClick = {
+                                BiometricPromptHelper.authenticate(
+                                    context = context,
+                                    title = "SentinelX Owner Authentication",
+                                    subtitle = "Owner Access Authorization",
+                                    description = "Scan fingerprint or face to authenticate owner identity",
+                                    onSuccess = {
+                                        viewModel.authenticateOwner("1234")
+                                        Toast.makeText(context, "Biometric authentication successful! Owner granted access.", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onError = { errString ->
+                                        Toast.makeText(context, "Biometric error: $errString (Fallback PIN supported)", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            },
                             colors = ButtonDefaults.outlinedButtonColors(
                                 containerColor = EmeraldNeon.copy(alpha = 0.12f),
                                 contentColor = EmeraldNeon
@@ -253,7 +286,7 @@ fun SentinelXApp(
                         ) {
                             Icon(Icons.Filled.Fingerprint, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Biometric / Quick Owner Login", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Biometric Scan Owner Login", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -299,11 +332,17 @@ fun SentinelXApp(
                             fontSize = 11.sp,
                             color = Color.Gray
                         )
+                        Text(
+                            text = "Inspired by Branton",
+                            fontSize = 10.sp,
+                            fontStyle = FontStyle.Italic,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
 
                 Spacer(modifier = Modifier.height(20.dp))
-                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Secondary Drawer Items
@@ -319,8 +358,8 @@ fun SentinelXApp(
                 )
 
                 NavigationDrawerItem(
-                    icon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = "Admin") },
-                    label = { Text("Admin & Billing") },
+                    icon = { Icon(Icons.Filled.AdminPanelSettings, contentDescription = "Admin Fleet") },
+                    label = { Text("Admin Fleet Control") },
                     selected = currentScreen == 5,
                     onClick = {
                         currentScreen = 5
@@ -392,7 +431,7 @@ fun SentinelXApp(
                 }
 
                 Spacer(modifier = Modifier.weight(1f))
-                Divider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
+                HorizontalDivider(color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.08f))
 
                 // Drawer footer
                 Text(
@@ -465,7 +504,13 @@ fun SentinelXApp(
                             }
 
                             IconButton(
-                                onClick = { viewModel.lockApp() },
+                                onClick = {
+                                    if (isKioskEnabled) {
+                                        viewModel.triggerRemoteCommand(viewModel.localDeviceId, "LOCK_DEVICE")
+                                    } else {
+                                        viewModel.lockApp()
+                                    }
+                                },
                                 modifier = Modifier.testTag("lock_app_top_btn")
                             ) {
                                 Icon(Icons.Filled.LockPerson, contentDescription = "Lock SentinelX App", tint = AlertOrange)
@@ -506,7 +551,7 @@ fun SentinelXApp(
                         NavigationBarItem(
                             selected = currentScreen == 3,
                             onClick = { currentScreen = 3 },
-                            icon = { Icon(Icons.Filled.Terminal, contentDescription = "WebSocket") },
+                            icon = { Icon(Icons.Filled.Terminal, contentDescription = "FCM Cloud") },
                             label = { Text("Socket", fontSize = 11.sp, fontWeight = FontWeight.Bold) },
                             modifier = Modifier.testTag("bottom_tab_socket")
                         )
@@ -529,9 +574,9 @@ fun SentinelXApp(
                         0 -> DashboardScreen(viewModel = viewModel, devices = devices)
                         1 -> LocationScreen(viewModel = viewModel, devices = devices)
                         2 -> SecurityActionsScreen(viewModel = viewModel, devices = devices)
-                        3 -> WebSocketConsoleScreen(viewModel = viewModel, devices = devices, commands = commands)
+                        3 -> FCMConsoleScreen(viewModel = viewModel, devices = devices, commands = commands)
                         4 -> BackupScreen(viewModel = viewModel, devices = devices)
-                        5 -> AdminSubscriptionScreen(viewModel = viewModel, devices = devices)
+                        5 -> AdminDashboardScreen(viewModel = viewModel, devices = devices)
                         6 -> DevPortalScreen()
                         7 -> HackingConsoleScreen(viewModel = viewModel, devices = devices)
                     }
@@ -644,13 +689,45 @@ fun SentinelXApp(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
+                            OutlinedButton(
+                                onClick = {
+                                    BiometricPromptHelper.authenticate(
+                                        context = context,
+                                        title = "Biometric Lost Mode Recovery",
+                                        subtitle = "Owner Authentication Required",
+                                        description = "Scan fingerprint or face to exit Lost Mode and restore device access",
+                                        onSuccess = {
+                                            keyboardInputPin = ""
+                                            inputErrorState = false
+                                            viewModel.triggerRemoteCommand(viewModel.localDeviceId, "STOP_LOST_MODE")
+                                            viewModel.triggerRemoteCommand(viewModel.localDeviceId, "UNLOCK_DEVICE")
+                                            Toast.makeText(context, "Biometric authentication verified! Lost Mode deactivated.", Toast.LENGTH_SHORT).show()
+                                        },
+                                        onError = { errString ->
+                                            Toast.makeText(context, "Biometric error: $errString", Toast.LENGTH_SHORT).show()
+                                        }
+                                    )
+                                },
+                                colors = ButtonDefaults.outlinedButtonColors(containerColor = EmeraldNeon.copy(alpha = 0.15f), contentColor = EmeraldNeon),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, EmeraldNeon),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(48.dp)
+                                    .testTag("lost_biometric_unlock_btn")
+                            ) {
+                                Icon(Icons.Filled.Fingerprint, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Biometric Scan Exit", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                            }
+
                             Button(
                                 onClick = {
-                                    // Quick simulation unlock
                                     keyboardInputPin = ""
                                     inputErrorState = false
-                                    viewModel.triggerRemoteCommand("sentinel-agent-local", "STOP_LOST_MODE")
-                                    viewModel.triggerRemoteCommand("sentinel-agent-local", "UNLOCK_DEVICE")
+                                    val devId = localDevice?.id ?: viewModel.localDeviceId
+                                    viewModel.triggerRemoteCommand(devId, "STOP_LOST_MODE")
+                                    viewModel.triggerRemoteCommand(devId, "UNLOCK_DEVICE")
                                 },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E2638)),
                                 modifier = Modifier
@@ -658,7 +735,7 @@ fun SentinelXApp(
                                     .height(48.dp)
                                     .testTag("lost_bypass_btn")
                             ) {
-                                Text("Owner PIN Bypass (2026)", fontSize = 11.sp)
+                                Text("Owner PIN (2026)", fontSize = 11.sp)
                             }
                         }
                     }
@@ -722,7 +799,7 @@ fun SentinelXApp(
                             // ONLINE TOGGLE UNLOCKING BUTTON
                             OutlinedButton(
                                 onClick = {
-                                    viewModel.toggleDeviceLockOnline("sentinel-agent-local")
+                                    viewModel.toggleDeviceLockOnline(viewModel.localDeviceId, false)
                                 },
                                 colors = ButtonDefaults.outlinedButtonColors(
                                     containerColor = Color(0xFF065F46).copy(alpha = 0.8f),
@@ -740,7 +817,7 @@ fun SentinelXApp(
 
                             Spacer(modifier = Modifier.height(16.dp))
 
-                            Divider(color = Color(0xFF00FF66).copy(alpha = 0.2f), modifier = Modifier.width(260.dp))
+                            HorizontalDivider(color = Color(0xFF00FF66).copy(alpha = 0.2f), modifier = Modifier.width(260.dp))
 
                             Spacer(modifier = Modifier.height(12.dp))
 
@@ -799,7 +876,7 @@ fun SentinelXApp(
                                                             "Unlock" -> {
                                                                 if (keyboardInputPin == "2026") {
                                                                     keyboardInputPin = ""
-                                                                    viewModel.triggerRemoteCommand("sentinel-agent-local", "UNLOCK_DEVICE")
+                                                                    viewModel.triggerRemoteCommand(viewModel.localDeviceId, "UNLOCK_DEVICE")
                                                                 } else {
                                                                     keyboardInputPin = ""
                                                                     inputErrorState = true

@@ -33,6 +33,7 @@ import com.example.ui.SentinelViewModel
 import com.example.ui.components.EducationalPermissionsDialog
 import com.example.ui.components.MatrixRainEffect
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,14 +42,14 @@ fun HackingConsoleScreen(
     devices: List<DeviceEntity>,
     modifier: Modifier = Modifier
 ) {
-    val localDevice = devices.find { it.id == "sentinel-agent-local" } ?: devices.firstOrNull()
+    val localDevice = devices.find { it.id == viewModel.localDeviceId } ?: devices.firstOrNull()
 
     var terminalLogs by remember {
         mutableStateOf(
             listOf(
                 "[INIT] Cyber Security Matrix Kernel v4.19 loaded.",
                 "[PROXY] Routing socket payload via TOR_RELAY_NODE_89...",
-                "[AUTH] Root shell granted for 'sentinel-agent-local'.",
+                "[AUTH] Root shell granted for 'Dynamic-Agent-ID'.",
                 "[INFO] Type 'help' or tap quick actions below to execute cyber commands."
             )
         )
@@ -81,15 +82,15 @@ fun HackingConsoleScreen(
                 appendLog("  - scan : Cyber Nmap vulnerability port sweep")
                 appendLog("  - permissions : Launch camera & location rationale")
                 appendLog("  - matrix : Toggle matrix digital rain mode")
-                appendLog("  - brute : Simulate code unlock brute force test")
+                appendLog("  - brute : Execute PIN brute-force resistance audit")
                 appendLog("  - clear : Clear console log buffer")
             }
             cmd == "lock" || cmd.contains("lock") && !cmd.contains("unlock") -> {
-                appendLog("[CYBER_EXEC] Triggering Remote Online Locking via WebSocket socket...")
+                appendLog("[CYBER_EXEC] Triggering Remote Online Locking via FCM Cloud socket...")
                 localDevice?.let { viewModel.triggerRemoteCommand(it.id, "LOCK_DEVICE") }
             }
             cmd == "unlock" || cmd.contains("unlock") -> {
-                appendLog("[CYBER_EXEC] Triggering Remote Online Toggle Unlocking via WebSocket...")
+                appendLog("[CYBER_EXEC] Triggering Remote Online Toggle Unlocking via FCM Cloud...")
                 localDevice?.let { viewModel.triggerRemoteCommand(it.id, "UNLOCK_DEVICE") }
             }
             cmd.contains("scan") || cmd.contains("nmap") -> {
@@ -267,7 +268,7 @@ fun HackingConsoleScreen(
                                 checked = localDevice?.isLocked == true,
                                 onCheckedChange = { isChecked ->
                                     localDevice?.let { dev ->
-                                        viewModel.toggleDeviceLockOnline(dev.id)
+                                        viewModel.toggleDeviceLockOnline(dev.id, isChecked)
                                     }
                                 },
                                 modifier = Modifier.testTag("online_lock_toggle_switch"),
@@ -280,7 +281,7 @@ fun HackingConsoleScreen(
                             )
                         }
 
-                        Divider(color = Color(0xFF00FF66).copy(alpha = 0.15f))
+                        HorizontalDivider(color = Color(0xFF00FF66).copy(alpha = 0.15f))
 
                         // Status pill breakdown
                         Row(
@@ -309,6 +310,7 @@ fun HackingConsoleScreen(
                             }
 
                             // Code Unlock Mode Status
+                            val currentOwnerPin by viewModel.ownerPasscodeFlow.collectAsState()
                             Surface(
                                 color = Color(0xFF0F172A),
                                 shape = RoundedCornerShape(8.dp),
@@ -318,9 +320,9 @@ fun HackingConsoleScreen(
                                     modifier = Modifier.padding(10.dp),
                                     horizontalAlignment = Alignment.CenterHorizontally
                                 ) {
-                                    Text("CODE UNLOCK", fontSize = 9.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
+                                    Text("MASTER PIN", fontSize = 9.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
                                     Text(
-                                        text = "PIN: 2026",
+                                        text = "PIN: $currentOwnerPin",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Black,
                                         color = Color(0xFF38BDF8),
@@ -367,6 +369,11 @@ fun HackingConsoleScreen(
                         }
                     }
                 }
+            }
+
+            // Advanced Matrix Decryptor Visualizer Widget
+            item {
+                MatrixDecryptorVisualizer()
             }
 
             // Educational Permissions Dialog Rationale Card
@@ -518,7 +525,7 @@ fun HackingConsoleScreen(
                             }
                         }
 
-                        Divider(color = Color(0xFF00FF66).copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 6.dp))
+                        HorizontalDivider(color = Color(0xFF00FF66).copy(alpha = 0.2f), modifier = Modifier.padding(vertical = 6.dp))
 
                         LazyColumn(
                             modifier = Modifier
@@ -592,4 +599,191 @@ fun HackingConsoleScreen(
         showDialog = showPermissionsDialog,
         onDismiss = { showPermissionsDialog = false }
     )
+}
+
+@Composable
+fun MatrixDecryptorVisualizer() {
+    var decryptProgress by remember { mutableStateOf(0.45f) }
+    var activeThreatLevel by remember { mutableStateOf("LOW") }
+    var decryptedKeyPrefix by remember { mutableStateOf("AES_0x4F92") }
+    var socketPacketCount by remember { mutableStateOf(1048) }
+
+    // Animate and randomize metrics dynamically for high-fidelity cyber feedback
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(1500)
+            decryptProgress = (decryptProgress + 0.02f).let { if (it > 0.99f) 0.35f else it }
+            socketPacketCount += (4..18).random()
+            if (Math.random() > 0.8) {
+                decryptedKeyPrefix = "AES_0x" + (1000..9999).random().toString(16).uppercase()
+            }
+        }
+    }
+
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF0A140F).copy(alpha = 0.92f)),
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, Color(0xFF00FF66).copy(alpha = 0.4f), RoundedCornerShape(16.dp))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Section Header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Security,
+                        contentDescription = "Matrix Hacking Engine",
+                        tint = Color(0xFF00FF66),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "ADVANCED MATRIX DECRYPTOR",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color.White,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .background(Color(0xFF00FF66).copy(alpha = 0.15f), RoundedCornerShape(4.dp))
+                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = "ACTIVE",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF00FF66),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            HorizontalDivider(color = Color(0xFF00FF66).copy(alpha = 0.15f))
+
+            // Live Progress & Entropy Metrics
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = "Entropy Decryption Progress",
+                        fontSize = 10.sp,
+                        color = Color.LightGray,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "${(decryptProgress * 100).toInt()}% COMPLETED",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF00FF66),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                LinearProgressIndicator(
+                    progress = { decryptProgress },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(3.dp)),
+                    color = Color(0xFF00FF66),
+                    trackColor = Color(0xFF00FF66).copy(alpha = 0.1f),
+                )
+            }
+
+            // Realtime Hexadecimal Cipher Stream Area
+            Surface(
+                color = Color.Black,
+                shape = RoundedCornerShape(8.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF00FF66).copy(alpha = 0.2f)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Text(
+                        text = "CIPHER STREAM: [TUNNEL SECURE]",
+                        fontSize = 8.sp,
+                        color = Color.Gray,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "KEY: $decryptedKeyPrefix • PACKETS: $socketPacketCount • FREQ: 928.42MHz",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF38BDF8),
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "HASH SEED: SHA-256/HMAC/PBKDF2-10000X/AES-256-GCM",
+                        fontSize = 8.sp,
+                        color = Color.Gray,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
+
+            // Interactive Threat Level Command Center
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "DEFENSIVE SHIELD THREAT BIAS:",
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    fontFamily = FontFamily.Monospace
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf("LOW", "GUARDED", "MAXIMUM").forEach { level ->
+                        val isSelected = activeThreatLevel == level
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(32.dp)
+                                .background(
+                                    if (isSelected) {
+                                        when (level) {
+                                            "LOW" -> Color(0xFF065F46)
+                                            "GUARDED" -> Color(0xFF9A3412)
+                                            else -> Color(0xFF991B1B)
+                                        }
+                                    } else Color(0xFF111E17),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (isSelected) Color(0xFF00FF66) else Color(0xFF00FF66).copy(alpha = 0.15f),
+                                    RoundedCornerShape(6.dp)
+                                )
+                                .clickable { activeThreatLevel = level }
+                                .padding(horizontal = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = level,
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = if (isSelected) Color.White else Color.Gray,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

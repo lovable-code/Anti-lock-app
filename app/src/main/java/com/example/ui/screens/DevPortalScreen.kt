@@ -211,15 +211,6 @@ fun ApiDocumentationView() {
 }"""
             )
         }
-
-        item {
-            ApiEndpointCard(
-                method = "WS",
-                path = "wss://sentinelx.secure/tunnel",
-                desc = "Persistent WebSocket gateway. Emits live 'command_dispatch' events and receives 'status_sync' reports.",
-                payload = "WebSocket Frame: { event: 'dispatch', data: CommandEntity }"
-            )
-        }
     }
 }
 

@@ -1,0 +1,11 @@
+--- app/src/main/java/com/example/ui/SentinelViewModel.kt
++++ app/src/main/java/com/example/ui/SentinelViewModel.kt
+@@ -438,9 +438,9 @@
+ 
+-    fun setTimedAutoLock(deviceId: String, durationMinutes: Long) {
++    fun setTimedAutoLock(deviceId: String, durationSeconds: Long) {
+         timerJobs[deviceId]?.cancel()
+-        val totalSecs = durationMinutes * 60L
++        val totalSecs = durationSeconds
+         val currentMap = _lockTimerRemainingSeconds.value.toMutableMap()
+         currentMap[deviceId] = totalSecs

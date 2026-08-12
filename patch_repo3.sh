@@ -1,0 +1,1 @@
+sed -i 's/db.collection("audit_logs")/val ownerId = FirebaseAuth.getInstance().currentUser?.uid ?: return\n            db.collection("users").document(ownerId).collection("devices").document(log.deviceId).collection("auditLogs")/g' app/src/main/java/com/example/data/SentinelRepository.kt

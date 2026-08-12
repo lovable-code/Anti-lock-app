@@ -51,3 +51,10 @@ data class CommandEntity(
     val status: String, // "Pending", "Sent", "Received", "Completed", "Failed"
     val signature: String
 )
+
+@Entity(tableName = "master_pin")
+data class MasterPinEntity(
+    @PrimaryKey val id: String = "master_pin_id",
+    val pin: String,
+    val updatedAt: Long
+)

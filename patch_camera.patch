@@ -1,0 +1,46 @@
+--- app/src/main/java/com/example/ui/screens/DashboardScreen.kt
++++ app/src/main/java/com/example/ui/screens/DashboardScreen.kt
+@@ -1691,9 +1691,16 @@
+                             val preview = Preview.Builder().build().also {
+                                 it.setSurfaceProvider(previewView.surfaceProvider)
+                             }
++                            val imageAnalysis = androidx.camera.core.ImageAnalysis.Builder()
++                                .setBackpressureStrategy(androidx.camera.core.ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
++                                .build()
++                            imageAnalysis.setAnalyzer(
++                                ContextCompat.getMainExecutor(ctx),
++                                com.example.util.QrCodeAnalyzer { token -> onTokenDetected(token) }
++                            )
+                             val cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+                             cameraProvider.unbindAll()
+                             cameraProvider.bindToLifecycle(
+                                 lifecycleOwner,
+                                 cameraSelector,
+-                                preview
++                                preview,
++                                imageAnalysis
+                             )
+                         } catch (e: Exception) {
+                             Log.e("CameraScanner", "Camera binding failed", e)
+@@ -1703,11 +1710,7 @@
+             )
+             Box(
+                 modifier = Modifier
+                     .fillMaxSize()
+-                    .background(Color.Black.copy(alpha = 0.25f))
+-                    .clickable {
+-                        onTokenDetected("STX-PAIR-84F29A")
+-                        Toast.makeText(context, "QR Token Captured: STX-PAIR-84F29A", Toast.LENGTH_SHORT).show()
+-                    },
++                    .background(Color.Black.copy(alpha = 0.25f)),
+                 contentAlignment = Alignment.Center
+             ) {
+                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
+@@ -1721,7 +1724,7 @@
+                     Spacer(modifier = Modifier.height(6.dp))
+                     Text(
+-                        text = "LIVE CAMERA FEED ACTIVE • TAP TO CAPTURE QR",
++                        text = "LIVE CAMERA FEED ACTIVE • SCANNING QR...",
+                         fontSize = 10.sp,
+                         fontWeight = FontWeight.Bold,
+                         fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace,

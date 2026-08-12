@@ -1,5 +1,7 @@
 package com.example.service
 
+import com.google.android.gms.location.LocationServices
+import kotlinx.coroutines.tasks.await
 import android.app.ActivityManager
 import android.content.Context
 import android.content.Intent
@@ -16,12 +18,31 @@ import android.util.Log
 import com.example.data.AuditLogEntity
 import com.example.data.DeviceEntity
 import com.example.data.SentinelRepository
+import com.google.firebase.auth.FirebaseAuth
 import java.io.File
 import kotlin.math.roundToInt
 
 class DeviceAgentManager(private val context: Context, private val repository: SentinelRepository) {
 
-    val thisDeviceId = "sentinel-agent-local"
+    val thisDeviceId: String by lazy {
+        val sharedPrefs = context.getSharedPreferences("sentinel_prefs", Context.MODE_PRIVATE)
+        var installId = sharedPrefs.getString("device_installation_id", null)
+        if (installId == null) {
+            installId = java.util.UUID.randomUUID().toString()
+            sharedPrefs.edit().putString("device_installation_id", installId).apply()
+        }
+        
+        // Attempt to combine with Firebase Auth UID if available
+        val authUid = try {
+            FirebaseAuth.getInstance().currentUser?.uid
+        } catch (e: Exception) { null }
+        
+        if (authUid != null) {
+            "dev-${authUid.take(8)}-$installId"
+        } else {
+            "dev-$installId"
+        }
+    }
 
     suspend fun enrollOrUpdateLocalDeviceAgent(
         driftLatitude: Double = 37.7749,
@@ -62,41 +83,103 @@ class DeviceAgentManager(private val context: Context, private val repository: S
         if (securityPatch.startsWith("2024") || securityPatch.startsWith("2023")) score -= 15
 
         val currentDevice = repository.getDeviceById(thisDeviceId)
-        val isLostMode = currentDevice?.isLostMode ?: false
-        val customLostMsg = currentDevice?.customLostMessage ?: ""
-        val customLostContact = currentDevice?.customLostContact ?: ""
-        val isLocked = currentDevice?.isLocked ?: false
-        val isAlarmActive = currentDevice?.isAlarmActive ?: false
+        val realLoc = getRealLocation()
+        val finalLat = realLoc?.first ?: currentDevice?.latitude ?: driftLatitude
+        val finalLng = realLoc?.second ?: currentDevice?.longitude ?: driftLongitude
+        
+        val updatedDevice = if (currentDevice != null) {
+            repository.updateDeviceStatsAndLocation(
+                id = thisDeviceId,
+                lat = finalLat,
+                lng = finalLng,
+                battery = batteryPct,
+                isCharging = isCharging,
+                network = network,
+                storageTotal = totalStorage,
+                storageUsed = usedStorage,
+                ramTotal = totalRam,
+                ramUsed = usedRam,
+                healthScore = score,
+                lastActiveTime = System.currentTimeMillis()
+            )
+            repository.getDeviceById(thisDeviceId)!!
+        } else {
+            val localDevice = DeviceEntity(
+                id = thisDeviceId,
+                name = name,
+                manufacturer = manufacturer,
+                model = model,
+                androidVersion = "Android $androidVersion",
+                securityPatch = securityPatch,
+                batteryPercentage = batteryPct,
+                isCharging = isCharging,
+                networkStatus = network,
+                storageTotalGb = totalStorage,
+                storageUsedGb = usedStorage,
+                ramTotalGb = totalRam,
+                ramUsedGb = usedRam,
+                isOnline = true,
+                lastActiveTime = System.currentTimeMillis(),
+                healthScore = score,
+                latitude = finalLat,
+                longitude = finalLng,
+                locationAccuracyMeters = 12.4f,
+                isLostMode = false,
+                customLostMessage = "",
+                customLostContact = "",
+                isLocked = false,
+                isAlarmActive = false
+            )
+            repository.insertDevice(localDevice)
+            localDevice
+        }
 
-        val localDevice = DeviceEntity(
-            id = thisDeviceId,
-            name = name,
-            manufacturer = manufacturer,
-            model = model,
-            androidVersion = "Android $androidVersion",
-            securityPatch = securityPatch,
-            batteryPercentage = batteryPct,
-            isCharging = isCharging,
-            networkStatus = network,
-            storageTotalGb = totalStorage,
-            storageUsedGb = usedStorage,
-            ramTotalGb = totalRam,
-            ramUsedGb = usedRam,
-            isOnline = true,
-            lastActiveTime = System.currentTimeMillis(),
-            healthScore = score,
-            latitude = driftLatitude,
-            longitude = driftLongitude,
-            locationAccuracyMeters = 12.4f,
-            isLostMode = isLostMode,
-            customLostMessage = customLostMsg,
-            customLostContact = customLostContact,
-            isLocked = isLocked,
-            isAlarmActive = isAlarmActive
-        )
+        // SYNC TO FIRESTORE (Cloud Real-time Management)
+        syncDeviceToFirestore(updatedDevice)
+        
+        return updatedDevice
+    }
 
-        repository.insertDevice(localDevice)
-        return localDevice
+    private fun syncDeviceToFirestore(device: DeviceEntity) {
+        try {
+            val ownerId = FirebaseAuth.getInstance().currentUser?.uid ?: return
+            val db = com.google.firebase.firestore.FirebaseFirestore.getInstance()
+            
+            val deviceMap = hashMapOf(
+                "id" to device.id,
+                "name" to device.name,
+                "manufacturer" to device.manufacturer,
+                "model" to device.model,
+                "androidVersion" to device.androidVersion,
+                "securityPatch" to device.securityPatch,
+                "batteryPercentage" to device.batteryPercentage,
+                "isCharging" to device.isCharging,
+                "networkStatus" to device.networkStatus,
+                "storageTotalGb" to device.storageTotalGb,
+                "storageUsedGb" to device.storageUsedGb,
+                "ramTotalGb" to device.ramTotalGb,
+                "ramUsedGb" to device.ramUsedGb,
+                "isOnline" to device.isOnline,
+                "lastActiveTime" to device.lastActiveTime,
+                "healthScore" to device.healthScore,
+                "latitude" to device.latitude,
+                "longitude" to device.longitude,
+                "isLostMode" to device.isLostMode,
+                "isLocked" to device.isLocked,
+                "isAlarmActive" to device.isAlarmActive,
+                "customLostMessage" to device.customLostMessage,
+                "customLostContact" to device.customLostContact
+            )
+            
+            db.collection("users").document(ownerId)
+                .collection("devices").document(device.id)
+                .set(deviceMap, com.google.firebase.firestore.SetOptions.merge())
+                .addOnFailureListener { e ->
+                    Log.w("DeviceAgentManager", "Firestore telemetry sync failed: ${e.message}")
+                }
+        } catch (e: Exception) {
+            // Silently fail if Firebase is not yet ready or configured
+        }
     }
 
     private fun getBatteryStatus(): Pair<Int, Boolean> {
@@ -173,6 +256,35 @@ class DeviceAgentManager(private val context: Context, private val repository: S
         }
     }
 
+
+
+
+    @android.annotation.SuppressLint("MissingPermission")
+    private suspend fun getRealLocation(): Pair<Double, Double>? {
+        return try {
+            val hasFine = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_FINE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            val hasCoarse = androidx.core.content.ContextCompat.checkSelfPermission(
+                context, android.Manifest.permission.ACCESS_COARSE_LOCATION
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+
+            if (!hasFine && !hasCoarse) return null
+
+            val fusedLocationClient = LocationServices.getFusedLocationProviderClient(context)
+            val loc = fusedLocationClient.getCurrentLocation(com.google.android.gms.location.Priority.PRIORITY_HIGH_ACCURACY, null).await()
+            if (loc != null) {
+                Pair(loc.latitude, loc.longitude)
+            } else {
+                val lastLoc = fusedLocationClient.lastLocation.await()
+                if (lastLoc != null) Pair(lastLoc.latitude, lastLoc.longitude) else null
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("DeviceAgentManager", "Error getting location", e)
+            null
+        }
+    }
+
     fun getInstalledApps(): List<String> {
         val appNames = mutableListOf<String>()
         try {
@@ -205,5 +317,25 @@ class DeviceAgentManager(private val context: Context, private val repository: S
             )
         }
         return appNames.take(15) // Limit size for performance and elegant presentation
+    }
+    
+    companion object {
+        fun getLocalDeviceId(context: Context): String {
+            val sharedPrefs = context.getSharedPreferences("sentinel_prefs", Context.MODE_PRIVATE)
+            var installId = sharedPrefs.getString("device_installation_id", null)
+            if (installId == null) {
+                installId = java.util.UUID.randomUUID().toString()
+                sharedPrefs.edit().putString("device_installation_id", installId).apply()
+            }
+            val authUid = try {
+                FirebaseAuth.getInstance().currentUser?.uid
+            } catch (e: Exception) { null }
+            
+            return if (authUid != null) {
+                "dev-${authUid.take(8)}-$installId"
+            } else {
+                "dev-$installId"
+            }
+        }
     }
 }

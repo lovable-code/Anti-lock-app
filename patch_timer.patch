@@ -1,0 +1,26 @@
+--- app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt
++++ app/src/main/java/com/example/ui/screens/AdminDashboardScreen.kt
+@@ -1908,12 +1908,15 @@
+                         ) {
+                             items(
+                                 listOf(
+-                                    5L to "5 min",
+-                                    10L to "10 min",
+-                                    15L to "15 min",
+-                                    30L to "30 min",
+-                                    50L to "50 min",
+-                                    60L to "1 hour",
+-                                    120L to "2 hours",
+-                                    180L to "3 hours",
++                                    30L to "30 sec",
++                                    60L to "1 min",
++                                    120L to "2 min",
++                                    300L to "5 min",
++                                    600L to "10 min",
++                                    900L to "15 min",
++                                    1800L to "30 min",
++                                    3000L to "50 min",
++                                    3600L to "1 hour",
++                                    7200L to "2 hours",
++                                    10800L to "3 hours",
+                                     720L to "12 hours",

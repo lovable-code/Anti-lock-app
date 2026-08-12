@@ -1,0 +1,11 @@
+--- app/src/main/java/com/example/data/SentinelDao.kt
++++ app/src/main/java/com/example/data/SentinelDao.kt
+@@ -69,5 +69,5 @@
+     @Query("SELECT * FROM commands ORDER BY timestamp DESC")
+-    @Query("SELECT * FROM commands WHERE commandId = :commandId")
+-    suspend fun getCommandById(commandId: String): CommandEntity?
+     fun getAllCommandsFlow(): Flow<List<CommandEntity>>
++
++    @Query("SELECT * FROM commands WHERE commandId = :commandId")
++    suspend fun getCommandById(commandId: String): CommandEntity?
+ 
